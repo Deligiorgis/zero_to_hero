@@ -1,0 +1,22 @@
+data:
+  n_features: 2
+  centers:
+    - [ 1, 1 ]
+    - [ 1, -1 ]
+    - [ -1, 1 ]
+    - [ -1, -1 ]
+  cluster_std: 0.25
+  n_samples: 2000
+  train_ratio: 0.8
+  valid_ratio: 0.1
+  batch_size: 100
+  pin_memory: false
+  num_workers: 0
+
+model:
+  hidden_nodes: null
+  learning_rate: 0.001
+
+hyper_parameters:
+  epochs: 300
+  patience: 30

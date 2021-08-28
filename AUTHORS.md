@@ -1,3 +1,3 @@
 # Contributors
 
-* georgedeli <delig0805@gmail.com>
+* Georgios Deligiorgis <delig0805@gmail.com>
