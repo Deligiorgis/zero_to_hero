@@ -48,14 +48,14 @@ def main() -> None:
     early_stop_callback = EarlyStopping(
         monitor="validation_loss",
         patience=config["hyper_parameters"]["patience"],
-        verbose=False,
+        verbose=True,
         mode="min",
         check_on_train_epoch_end=True,
     )
     checkpoint_callback = ModelCheckpoint(
         monitor="validation_loss",
         mode="min",
-        verbose=False,
+        verbose=True,
         save_last=True,
         save_top_k=1,
         filename="fashionMNIST-classification-{epoch:02d}-{validation_loss:.4f}",
@@ -81,6 +81,7 @@ def main() -> None:
         model=model,
         datamodule=datamodule,
         ckpt_path="best",
+        verbose=True,
     )
 
 
