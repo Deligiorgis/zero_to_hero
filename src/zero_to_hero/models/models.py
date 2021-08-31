@@ -54,12 +54,15 @@ class CNN(nn.Module):
         in_channels: int,
         list_out_channels: List[int],
         list_kernel_size: List[Union[int, Tuple[int, int]]],
+        list_cnn_dropout: List[float],
     ) -> None:
         super().__init__()
 
         cnn_layers = []
 
-        for enum, (out_channels, kernel_size) in enumerate(zip(list_out_channels, list_kernel_size)):
+        for enum, (out_channels, kernel_size, dropout) in enumerate(
+            zip(list_out_channels, list_kernel_size, list_cnn_dropout)
+        ):
             cnn_layers.extend(
                 [
                     nn.Conv2d(
@@ -68,9 +71,10 @@ class CNN(nn.Module):
                         kernel_size=kernel_size,
                     ),
                     nn.ReLU(),
+                    nn.Dropout(p=dropout),
                 ]
             )
-        cnn_layers = cnn_layers[:-1]  # remove lust ReLU
+        cnn_layers = cnn_layers[:-2]  # remove last ReLU and Dropout
         self.cnn_layers = nn.Sequential(*cnn_layers)
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
