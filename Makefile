@@ -1,13 +1,14 @@
 black:
-	black --line-length=120 src tests
+	black --line-length=120 src tests scripts
 
 isort:
-	isort --profile=black src tests
+	isort --profile=black src tests scripts
 
 mypy:
-	mypy --config-file .\mypy.ini src tests
+	mypy --config-file .\mypy.ini src tests scripts
 
 pylint:
-	pylint src tests
+	pylint src tests scripts
 
-#pytest:
+pytest:
+	pytest --numprocesses 2 tests
