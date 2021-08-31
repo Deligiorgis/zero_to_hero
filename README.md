@@ -1,6 +1,6 @@
-# zero_to_hero
+# Zero To Hero Deep Learning
 
-Add a short description here!
+This repository tries to introduce the different stages that need to follow for classifying data based on their complexity.
 
 ## Description
 

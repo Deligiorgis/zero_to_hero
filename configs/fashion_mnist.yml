@@ -1,0 +1,29 @@
+data:
+  val_split: 0.2
+  n_targets: 10
+
+model:
+  in_channels: 1
+  out_channels:
+    - 11
+    - 7
+    - 5
+  kernel_size:
+    - 3
+    - 5
+    - 7
+  cnn_dropout:
+    - 0.10
+    - 0.08
+    - 0.05
+
+  #  hidden_nodes: null
+  hidden_nodes: [ 50, 20 ]
+
+hyper_parameters:
+  epochs: 50
+  patience: 10
+  batch_size: 100
+  learning_rate: 0.001
+  num_workers: 0
+  pin_memory: false
