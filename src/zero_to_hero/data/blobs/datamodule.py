@@ -85,7 +85,7 @@ class BlobsDataModule(pl.LightningDataModule):
             dataset=self.train_dataset,
             batch_size=self.config["hyper_parameters"]["batch_size"],
             shuffle=True,
-            pin_memory=True,
+            pin_memory=self.config["hyper_parameters"]["pin_memory"],
             num_workers=self.config["hyper_parameters"]["num_workers"],
             drop_last=False,
         )
@@ -96,7 +96,7 @@ class BlobsDataModule(pl.LightningDataModule):
             dataset=self.valid_dataset,
             batch_size=self.config["hyper_parameters"]["batch_size"],
             shuffle=False,
-            pin_memory=True,
+            pin_memory=self.config["hyper_parameters"]["pin_memory"],
             num_workers=self.config["hyper_parameters"]["num_workers"],
             drop_last=False,
         )
@@ -107,7 +107,7 @@ class BlobsDataModule(pl.LightningDataModule):
             dataset=self.test_dataset,
             batch_size=self.config["hyper_parameters"]["batch_size"],
             shuffle=False,
-            pin_memory=True,
+            pin_memory=self.config["hyper_parameters"]["pin_memory"],
             num_workers=self.config["hyper_parameters"]["num_workers"],
             drop_last=False,
         )
