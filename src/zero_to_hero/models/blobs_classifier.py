@@ -110,20 +110,21 @@ class BlobsClassifierModel(pl.LightningModule):  # pylint: disable=too-many-ance
         if self.trainer is not None:
             self.log("step", self.trainer.current_epoch)
             assert isinstance(outputs[0], dict)
-            if self.trainer.current_epoch % 5 == 0:
+            if self.trainer.current_epoch % 25 == 0:
                 dict_data = get_data_from_outputs(
                     keys=["data", "targets", "predictions"],
                     outputs=outputs,
                 )
 
-                self.logger.experiment.add_pr_curve(
+                tensorboard = self.logger.experiment
+                tensorboard.add_pr_curve(
                     tag="train-blobs-pr-curve",
                     labels=dict_data["targets"].cpu().squeeze(),
                     predictions=dict_data["predictions"].cpu().squeeze(),
                     global_step=self.trainer.current_epoch,
                 )
 
-                self.logger.experiment.add_embedding(
+                tensorboard.add_embedding(
                     tag="train-blobs-embedding-space",
                     mat=dict_data["data"].cpu(),
                     metadata=dict_data["targets"].cpu(),
@@ -132,7 +133,7 @@ class BlobsClassifierModel(pl.LightningModule):  # pylint: disable=too-many-ance
 
                 if outputs[0]["data"].shape[1] == 2:
                     fig = self.get_figure(dict_data["data"], dict_data["targets"])
-                    self.logger.experiment.add_figure(tag="train", figure=fig, global_step=self.trainer.current_epoch)
+                    tensorboard.add_figure(tag="train", figure=fig, global_step=self.trainer.current_epoch)
 
     def validation_step(  # type: ignore # pylint: disable=arguments-differ
         # Signature of "validation_step" incompatible with supertype "LightningModule"
@@ -154,20 +155,21 @@ class BlobsClassifierModel(pl.LightningModule):  # pylint: disable=too-many-ance
         if self.trainer is not None:
             self.log("step", self.trainer.current_epoch)
             assert isinstance(outputs[0], dict)
-            if self.trainer.current_epoch % 5 == 0:
+            if self.trainer.current_epoch % 25 == 0:
                 dict_data = get_data_from_outputs(
                     keys=["data", "targets", "predictions"],
                     outputs=outputs,
                 )
 
-                self.logger.experiment.add_pr_curve(
+                tensorboard = self.logger.experiment
+                tensorboard.add_pr_curve(
                     tag="valid-blobs-pr-curve",
                     labels=dict_data["targets"].cpu().squeeze(),
                     predictions=dict_data["predictions"].cpu().squeeze(),
                     global_step=self.trainer.current_epoch,
                 )
 
-                self.logger.experiment.add_embedding(
+                tensorboard.add_embedding(
                     tag="valid-blobs-embedding-space",
                     mat=dict_data["data"].cpu(),
                     metadata=dict_data["targets"].cpu(),
@@ -175,7 +177,7 @@ class BlobsClassifierModel(pl.LightningModule):  # pylint: disable=too-many-ance
                 )
 
                 fig = self.get_figure(dict_data["data"], dict_data["targets"])
-                self.logger.experiment.add_figure(tag="valid", figure=fig, global_step=self.trainer.current_epoch)
+                tensorboard.add_figure(tag="valid", figure=fig, global_step=self.trainer.current_epoch)
 
     def test_step(  # type: ignore # pylint: disable=arguments-differ
         # Signature of "test_step" incompatible with supertype "LightningModule"
@@ -192,31 +194,29 @@ class BlobsClassifierModel(pl.LightningModule):  # pylint: disable=too-many-ance
         self.log("accuracy", test_accuracy, on_epoch=True)
 
         if self.trainer is not None:
-            self.log("step", self.trainer.current_epoch)
+            dict_data = get_data_from_outputs(
+                keys=["data", "targets", "predictions"],
+                outputs=outputs,
+            )
 
-            if self.trainer.current_epoch % 5 == 0:
-                dict_data = get_data_from_outputs(
-                    keys=["data", "targets", "predictions"],
-                    outputs=outputs,
-                )
+            tensorboard = self.logger.experiment
+            tensorboard.add_pr_curve(
+                tag="test-blobs-pr-curve",
+                labels=dict_data["targets"].cpu().squeeze(),
+                predictions=dict_data["predictions"].cpu().squeeze(),
+                global_step=self.trainer.current_epoch,
+            )
 
-                self.logger.experiment.add_pr_curve(
-                    tag="test-blobs-pr-curve",
-                    labels=dict_data["targets"].cpu().squeeze(),
-                    predictions=dict_data["predictions"].cpu().squeeze(),
-                    global_step=self.trainer.current_epoch,
-                )
+            tensorboard.add_embedding(
+                tag="test-blobs-embedding-space",
+                mat=dict_data["data"].cpu(),
+                metadata=dict_data["targets"].cpu(),
+                global_step=self.trainer.current_epoch,
+            )
 
-                self.logger.experiment.add_embedding(
-                    tag="test-blobs-embedding-space",
-                    mat=dict_data["data"].cpu(),
-                    metadata=dict_data["targets"].cpu(),
-                    global_step=self.trainer.current_epoch,
-                )
-
-                if outputs[0]["data"].shape[1] == 2:
-                    fig = self.get_figure(dict_data["data"], dict_data["targets"])
-                    self.logger.experiment.add_figure(tag="test", figure=fig, global_step=self.trainer.current_epoch)
+            if outputs[0]["data"].shape[1] == 2:
+                fig = self.get_figure(dict_data["data"], dict_data["targets"])
+                tensorboard.add_figure(tag="test", figure=fig, global_step=self.trainer.current_epoch)
 
     def predict_step(  # type: ignore  # Signature of "predict_step" incompatible with supertype "LightningModule"
         self,
