@@ -3,7 +3,9 @@ Deep Learning Models that can be re-used in different use-cases
 """
 from typing import List, Optional, Tuple, Union
 
+import dgl
 import torch
+from dgl.nn.pytorch.conv import GraphConv
 from torch import nn
 
 
@@ -83,3 +85,47 @@ class CNN(nn.Module):
         :return: torch.Tensor
         """
         return self.cnn_layers(data)
+
+
+class GraphEncoder(nn.Module):
+    """
+    Graph Encoder Module
+    """
+
+    def __init__(self, in_features: int, list_out_features: List[int], list_gnn_dropout: List[float]) -> None:
+        super().__init__()
+
+        self.layers = nn.ModuleList()
+
+        num_layers = len(list_out_features)
+        for enum, (out_feats, dropout) in enumerate(zip(list_out_features, list_gnn_dropout)):
+            self.layers.extend(
+                [
+                    GraphConv(
+                        in_feats=in_features if enum == 0 else list_out_features[enum - 1],
+                        out_feats=out_feats,
+                        norm="both",
+                        weight=True,
+                        bias=True,
+                        activation=nn.ReLU() if enum < num_layers - 1 else None,
+                        allow_zero_in_degree=False,
+                    ),
+                    nn.Dropout(p=dropout),
+                ]
+            )
+        self.layers = self.layers[:-1]  # remove last Dropout
+
+    def forward(self, feats: torch.Tensor, blocks: dgl.DGLHeteroGraph) -> torch.Tensor:
+        """
+
+        :param feats: torch.Tensor, node features
+        :param blocks: dgl.DGLHeteroGraph, list of blocks (one per layer)
+        :return: torch.Tensor, node embedding vectors
+        """
+        embeds = feats
+        for layer, block in zip(self.layers, blocks):
+            if isinstance(layer, GraphConv):
+                embeds = layer(feats, block)
+            else:
+                embeds = layer(embeds)
+        return embeds
