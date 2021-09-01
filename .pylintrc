@@ -155,7 +155,8 @@ disable=print-statement,
         comprehension-escape,
         # Disabled by user
         line-too-long,  # black will control the length of a line
-        no-member  # too many false positive
+        no-member,  # too many false positive
+        unspecified-encoding  # we can use the default encoding
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option

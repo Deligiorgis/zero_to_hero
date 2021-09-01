@@ -54,4 +54,4 @@ MANIFEST
 
 # Logs
 lightning_logs/*
-tb_logs/*
+tensorboard_logs/*

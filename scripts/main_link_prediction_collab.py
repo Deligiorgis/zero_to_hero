@@ -1,24 +1,23 @@
 """
-Main script to fit and predict the label (classes) of the blobs
+Main script to fit and predict the links (collaborations) between the authors
 """
-import warnings
 from pathlib import Path
 
 import pytorch_lightning as pl
-import torch.cuda
+import torch
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from zero_to_hero.config_reader import read_config
-from zero_to_hero.data.blobs import BlobsDataModule
-from zero_to_hero.models.blobs_classifier import BlobsClassifierModel
+from zero_to_hero.data.collab import CollabDataModule
+from zero_to_hero.models.link_prediction_collab import LinkPredictorCollab
 
-warnings.filterwarnings("ignore")
+# warnings.filterwarnings("ignore")
 
 
 def main() -> None:
     """
-    Main function that runs the fit (training) of the blobs' classifier and its predictions
+
     :return:
     """
     pl.seed_everything(
@@ -26,15 +25,15 @@ def main() -> None:
         workers=True,
     )
 
-    config = read_config(path=Path("configs/blobs.yml"))
+    config = read_config(path=Path("configs/collab.yml"))
 
-    datamodule = BlobsDataModule(config=config)
-    model = BlobsClassifierModel(config=config)
+    datamodule = CollabDataModule(config=config)
+    model = LinkPredictorCollab(config=config)
 
     logger = TensorBoardLogger(
         save_dir="tensorboard_logs",
-        name="blobs",
-        prefix=f"blobs--centers-{len(config['data']['centers'])}--dims-{config['data']['in_features']}",
+        name="collab",
+        prefix="collab",
         default_hp_metric=False,
         log_graph=True,
     )
@@ -51,7 +50,7 @@ def main() -> None:
         verbose=True,
         save_last=True,
         save_top_k=1,
-        filename="blobs-classification-{epoch:02d}-{validation_loss:.4f}",
+        filename="collab-link-prediction-{epoch:02d}-{validation_loss:.4f}",
     )
     trainer = pl.Trainer(
         gpus=[0] if torch.cuda.is_available() else None,
@@ -74,14 +73,6 @@ def main() -> None:
         datamodule=datamodule,
         ckpt_path="best",
     )
-
-    predictions_probabilities = trainer.predict(
-        model=model,
-        datamodule=datamodule,
-        return_predictions=True,
-        ckpt_path="best",
-    )
-    print(predictions_probabilities)
 
 
 if __name__ == "__main__":

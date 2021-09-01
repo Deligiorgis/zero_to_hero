@@ -1,6 +1,7 @@
 """
 Main script to train and classify the clothes from FashionMNIST
 """
+import warnings
 from pathlib import Path
 
 import pytorch_lightning as pl
@@ -11,6 +12,8 @@ from pytorch_lightning.loggers import TensorBoardLogger
 
 from zero_to_hero.config_reader import read_config
 from zero_to_hero.models.fashion_mnist_classifier import FashionMNISTClassifier
+
+warnings.filterwarnings("ignore")
 
 
 def main() -> None:
@@ -39,7 +42,7 @@ def main() -> None:
     model = FashionMNISTClassifier(configs=config)
 
     logger = TensorBoardLogger(
-        save_dir="tb_logs",
+        save_dir="tensorboard_logs",
         name="fashionMNIST",
         prefix="fashionMNIST",
         default_hp_metric=False,
@@ -74,7 +77,6 @@ def main() -> None:
         model=model,
         datamodule=datamodule,
     )
-
     print("Best checkpoint path:", trainer.checkpoint_callback.best_model_path)
 
     trainer.test(

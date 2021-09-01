@@ -18,9 +18,9 @@ def get_data_from_outputs(
     :return: data: torch.Tensor, targets: torch.Tensor, predictions: torch.Tensor
     """
     assert isinstance(outputs[0], dict)
-    data = {key: outputs[0][key] for key in keys}
+    data = {key: outputs[0][key].cpu() for key in keys}
     for output in outputs[1:]:
         assert isinstance(output, dict)
         for key in keys:
-            data[key] = torch.cat([data[key], output[key]], dim=0)
+            data[key] = torch.cat([data[key], output[key].cpu()], dim=0)
     return data

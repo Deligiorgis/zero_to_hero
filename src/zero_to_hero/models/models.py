@@ -1,9 +1,11 @@
 """
 Deep Learning Models that can be re-used in different use-cases
 """
-from typing import List, Optional, Tuple, Union
+from typing import List, Tuple, Union
 
+import dgl
 import torch
+from dgl.nn.pytorch.conv import GraphConv
 from torch import nn
 
 
@@ -12,28 +14,26 @@ class MLP(nn.Module):
     Implementation of the Multilayer Perceptron model
     """
 
-    def __init__(self, n_targets: int, n_features: int, hidden_nodes: Optional[List[int]] = None) -> None:
+    def __init__(self, in_features: int, list_out_features: List[int], list_linear_dropout: List[float]) -> None:
         super().__init__()
 
-        if hidden_nodes is not None:
-            layers = [
-                nn.Linear(in_features=n_features, out_features=hidden_nodes[0]),
-                nn.ReLU(),
-            ]
-            for enum, hidden in enumerate(hidden_nodes[1:]):
-                layers.extend(
-                    [
-                        nn.Linear(in_features=hidden_nodes[enum], out_features=hidden),
-                        nn.ReLU(),
-                    ]
-                )
-            layers.append(nn.Linear(in_features=hidden_nodes[-1], out_features=n_targets))
-        else:
-            layers = [
-                nn.Linear(in_features=n_features, out_features=n_targets),
-            ]
+        linear_layers = []
 
-        self.layers = nn.Sequential(*layers)
+        for enum, (out_features, dropout) in enumerate(zip(list_out_features, list_linear_dropout)):
+            linear_layers.extend(
+                [
+                    nn.Linear(
+                        in_features=in_features if enum == 0 else list_out_features[enum - 1],
+                        out_features=out_features,
+                        bias=True,
+                    ),
+                    nn.BatchNorm1d(num_features=out_features),
+                    nn.ReLU(),
+                    nn.Dropout(p=dropout),
+                ]
+            )
+        linear_layers = linear_layers[:-3]  # remove last BatchNorm1d, ReLU and Dropout
+        self.linear_layers = nn.Sequential(*linear_layers)
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
         """
@@ -41,7 +41,7 @@ class MLP(nn.Module):
         :param data: torch.Tensor
         :return: torch.Tensor
         """
-        return self.layers(data)
+        return self.linear_layers(data)
 
 
 class CNN(nn.Module):
@@ -70,11 +70,12 @@ class CNN(nn.Module):
                         out_channels=out_channels,
                         kernel_size=kernel_size,
                     ),
+                    nn.BatchNorm2d(num_features=out_channels),
                     nn.ReLU(),
                     nn.Dropout(p=dropout),
                 ]
             )
-        cnn_layers = cnn_layers[:-2]  # remove last ReLU and Dropout
+        cnn_layers = cnn_layers[:-3]  # remove last BatchNorm1d, ReLU and Dropout
         self.cnn_layers = nn.Sequential(*cnn_layers)
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
@@ -83,3 +84,51 @@ class CNN(nn.Module):
         :return: torch.Tensor
         """
         return self.cnn_layers(data)
+
+
+class GraphEncoder(nn.Module):
+    """
+    Graph Encoder Module
+    """
+
+    def __init__(self, in_features: int, list_out_features: List[int], list_gnn_dropout: List[float]) -> None:
+        super().__init__()
+
+        self.layers = nn.ModuleList()
+
+        num_layers = len(list_out_features)
+        for enum, (out_feats, dropout) in enumerate(zip(list_out_features, list_gnn_dropout)):
+            self.layers.extend(
+                [
+                    GraphConv(
+                        in_feats=in_features if enum == 0 else list_out_features[enum - 1],
+                        out_feats=out_feats,
+                        norm="both",
+                        weight=True,
+                        bias=True,
+                        activation=nn.ReLU() if enum < num_layers - 1 else None,
+                        allow_zero_in_degree=False,
+                    ),
+                    nn.Dropout(p=dropout),
+                ]
+            )
+        self.layers = self.layers[:-1]  # remove last Dropout
+
+    def forward(self, feats: torch.Tensor, blocks: dgl.DGLHeteroGraph) -> torch.Tensor:
+        """
+
+        :param feats: torch.Tensor, node features
+        :param blocks: dgl.DGLHeteroGraph, list of blocks (one per layer)
+        :return: torch.Tensor, node embedding vectors
+        """
+        embeds = feats
+        for enum, layer in enumerate(self.layers):
+            if isinstance(layer, GraphConv):
+                graph_index = int(enum / 2)
+                embeds = layer(
+                    graph=blocks[graph_index],
+                    feat=embeds,
+                )
+            else:
+                embeds = layer(embeds)
+        return embeds

@@ -8,7 +8,7 @@ mypy:
 	mypy --config-file .\mypy.ini src tests scripts
 
 pylint:
-	pylint src tests scripts
+	pylint -j 2 src tests scripts
 
 pytest:
 	pytest --numprocesses 2 tests

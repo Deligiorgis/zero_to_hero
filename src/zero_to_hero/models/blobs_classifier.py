@@ -1,7 +1,7 @@
 """
 Model that classifies blobs
 """
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -22,7 +22,7 @@ class BlobsClassifierModel(pl.LightningModule):  # pylint: disable=too-many-ance
     Implementation of the Blobs' Classifier
     """
 
-    def __init__(self, config: Dict) -> None:
+    def __init__(self, config: Dict[str, Any]) -> None:
         super().__init__()
 
         self.config = config
@@ -30,13 +30,15 @@ class BlobsClassifierModel(pl.LightningModule):  # pylint: disable=too-many-ance
         self.criterion = nn.CrossEntropyLoss(reduction="none")
 
         self.mlp = MLP(
-            n_targets=len(self.config["data"]["centers"]),
-            n_features=self.config["data"]["n_features"],
-            hidden_nodes=self.config["model"]["hidden_nodes"],
+            in_features=self.config["data"]["in_features"],
+            list_out_features=self.config["model"]["out_features"],
+            list_linear_dropout=self.config["model"]["dropout"],
         )
         self.softmax = nn.Softmax(dim=1)
 
-        self.example_input_array = torch.rand(10, self.config["data"]["n_features"])
+        self.example_input_array = torch.rand(10, self.config["data"]["in_features"])
+
+        self.save_hyperparameters()
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:  # type: ignore # pylint: disable=arguments-differ
         # Signature of "forward" incompatible with supertype "LightningModule"
@@ -124,13 +126,6 @@ class BlobsClassifierModel(pl.LightningModule):  # pylint: disable=too-many-ance
                     global_step=self.trainer.current_epoch,
                 )
 
-                tensorboard.add_embedding(
-                    tag="train-blobs-embedding-space",
-                    mat=dict_data["data"].cpu(),
-                    metadata=dict_data["targets"].cpu(),
-                    global_step=self.trainer.current_epoch,
-                )
-
                 if outputs[0]["data"].shape[1] == 2:
                     fig = self.get_figure(dict_data["data"], dict_data["targets"])
                     tensorboard.add_figure(tag="train", figure=fig, global_step=self.trainer.current_epoch)
@@ -148,9 +143,9 @@ class BlobsClassifierModel(pl.LightningModule):  # pylint: disable=too-many-ance
         validation_loss, validation_accuracy = compute_metrics(outputs=outputs, device=self.device)
         if self.trainer is not None:
             self.log("step", self.trainer.current_epoch)
-        self.log("loss", {"val": validation_loss}, on_epoch=True)
-        self.log("accuracy", {"val": validation_accuracy}, on_epoch=True)
-        self.log("validation_loss", validation_loss)
+        self.log("loss", {"valid": validation_loss}, on_epoch=True)
+        self.log("accuracy", {"valid": validation_accuracy}, on_epoch=True)
+        self.log("validation_loss", validation_loss, on_epoch=True)
 
         if self.trainer is not None:
             self.log("step", self.trainer.current_epoch)
@@ -169,15 +164,9 @@ class BlobsClassifierModel(pl.LightningModule):  # pylint: disable=too-many-ance
                     global_step=self.trainer.current_epoch,
                 )
 
-                tensorboard.add_embedding(
-                    tag="valid-blobs-embedding-space",
-                    mat=dict_data["data"].cpu(),
-                    metadata=dict_data["targets"].cpu(),
-                    global_step=self.trainer.current_epoch,
-                )
-
-                fig = self.get_figure(dict_data["data"], dict_data["targets"])
-                tensorboard.add_figure(tag="valid", figure=fig, global_step=self.trainer.current_epoch)
+                if outputs[0]["data"].shape[1] == 2:
+                    fig = self.get_figure(dict_data["data"], dict_data["targets"])
+                    tensorboard.add_figure(tag="valid", figure=fig, global_step=self.trainer.current_epoch)
 
     def test_step(  # type: ignore # pylint: disable=arguments-differ
         # Signature of "test_step" incompatible with supertype "LightningModule"
@@ -223,5 +212,9 @@ class BlobsClassifierModel(pl.LightningModule):  # pylint: disable=too-many-ance
         batch: torch.Tensor,
         _: int,
         __: Optional[int] = None,
-    ) -> torch.Tensor:
-        return self.softmax(batch).argmax(dim=1)  # outputs.argmax(dim=1)
+    ) -> Dict[str, torch.Tensor]:
+        probabilities = self.softmax(self(batch))
+        return {
+            "predictions": probabilities.argmax(dim=1).cpu(),
+            "probabilities": probabilities.cpu(),
+        }
