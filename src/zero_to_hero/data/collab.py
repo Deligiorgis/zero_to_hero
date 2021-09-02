@@ -14,7 +14,7 @@ from pytorch_lightning.utilities.types import EVAL_DATALOADERS, TRAIN_DATALOADER
 from torch.utils.data import DataLoader
 
 
-class OGBLDrugDrugInteractionDataModule(pl.LightningDataModule):
+class CollabDataModule(pl.LightningDataModule):
     """
     Implementation of the PyTorch Lightning DataModule for the OGBL dataset Drug-Drug-Interaction
     """
@@ -30,13 +30,13 @@ class OGBLDrugDrugInteractionDataModule(pl.LightningDataModule):
 
     def prepare_data(self) -> None:
         DglLinkPropPredDataset(
-            name="ogbl-ddi",
+            name="ogbl-collab",
             root="data",
         )
 
     def setup(self, stage: Optional[str] = None) -> None:
         dataset = DglLinkPropPredDataset(
-            name="ogbl-ddi",
+            name="ogbl-collab",
             root="data",
         )
         graph = dataset.graph[0]

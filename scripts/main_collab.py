@@ -1,5 +1,5 @@
 """
-Main script to fit and predict the links (interactions) between the drugs
+Main script to fit and predict the links (collaborations) between the authors
 """
 from pathlib import Path
 
@@ -9,8 +9,8 @@ from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from zero_to_hero.config_reader import read_config
-from zero_to_hero.data.ddi import OGBLDrugDrugInteractionDataModule
-from zero_to_hero.models.link_prediction_ddi import LinkPredictorDDI
+from zero_to_hero.data.collab import CollabDataModule
+from zero_to_hero.models.link_prediction_collab import LinkPredictorCollab
 
 
 def main() -> None:
@@ -23,15 +23,15 @@ def main() -> None:
         workers=True,
     )
 
-    config = read_config(path=Path("configs/ddi.yml"))
+    config = read_config(path=Path("configs/collab.yml"))
 
-    datamodule = OGBLDrugDrugInteractionDataModule(config=config)
-    model = LinkPredictorDDI(config=config)
+    datamodule = CollabDataModule(config=config)
+    model = LinkPredictorCollab(config=config)
 
     logger = TensorBoardLogger(
         save_dir="tb_logs",
-        name="ddi",
-        prefix="ddi",
+        name="collab",
+        prefix="collab",
         default_hp_metric=False,
         log_graph=True,
     )
@@ -48,7 +48,7 @@ def main() -> None:
         verbose=True,
         save_last=True,
         save_top_k=1,
-        filename="ddi-link-prediction-{epoch:02d}-{validation_loss:.4f}",
+        filename="collab-link-prediction-{epoch:02d}-{validation_loss:.4f}",
     )
     trainer = pl.Trainer(
         gpus=[0] if torch.cuda.is_available() else None,

@@ -3,4 +3,4 @@
 # Except this file and .gitignore in sub directories
 !.gitignore
 !FashionMNIST
-!ogbl_ddi
+!ogbl_collab

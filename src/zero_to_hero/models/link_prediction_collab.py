@@ -12,7 +12,7 @@ from torch import nn
 from zero_to_hero.models.models import MLP, GraphEncoder
 
 
-class LinkPredictorDDI(pl.LightningModule):  # pylint: disable=too-many-ancestors
+class LinkPredictorCollab(pl.LightningModule):  # pylint: disable=too-many-ancestors
     # the ancestors come from PyTorch Lightning
     """
     Implementation of the Link Predictor LightModule
