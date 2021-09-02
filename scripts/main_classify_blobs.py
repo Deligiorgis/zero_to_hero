@@ -9,7 +9,7 @@ from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from zero_to_hero.config_reader import read_config
-from zero_to_hero.data.blobs.datamodule import BlobsDataModule
+from zero_to_hero.data.blobs import BlobsDataModule
 from zero_to_hero.models.blobs_classifier import BlobsClassifierModel
 
 
