@@ -1,6 +1,7 @@
 """
 Main script to fit and predict the label (classes) of the blobs
 """
+import warnings
 from pathlib import Path
 
 import pytorch_lightning as pl
@@ -11,6 +12,8 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from zero_to_hero.config_reader import read_config
 from zero_to_hero.data.blobs import BlobsDataModule
 from zero_to_hero.models.blobs_classifier import BlobsClassifierModel
+
+warnings.filterwarnings("ignore")
 
 
 def main() -> None:
@@ -29,7 +32,7 @@ def main() -> None:
     model = BlobsClassifierModel(config=config)
 
     logger = TensorBoardLogger(
-        save_dir="tb_logs",
+        save_dir="tensorboard",
         name="blobs",
         prefix="blobs",
         default_hp_metric=False,
