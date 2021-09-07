@@ -31,7 +31,7 @@ class FashionMNISTClassifier(pl.LightningModule):  # pylint: disable=too-many-an
         self.embeds = torch.empty(1)
 
         self.cnn_layers = CNN(
-            in_channels=self.configs["model"]["in_channels"],
+            in_channels=self.configs["data"]["in_channels"],
             list_out_channels=self.configs["model"]["out_channels"],
             list_kernel_size=self.configs["model"]["kernel_size"],
             list_cnn_dropout=self.configs["model"]["cnn_dropout"],
@@ -89,6 +89,7 @@ class FashionMNISTClassifier(pl.LightningModule):  # pylint: disable=too-many-an
 
     def validation_step(  # type: ignore # pylint: disable=arguments-differ
         # Signature of "training_step" incompatible with supertype "LightningModule"
+        # No need for all arguments
         self,
         batch: Tuple[torch.Tensor, torch.Tensor],
         _: int,
@@ -133,6 +134,7 @@ class FashionMNISTClassifier(pl.LightningModule):  # pylint: disable=too-many-an
 
     def test_step(  # type: ignore # pylint: disable=arguments-differ
         # Signature of "training_step" incompatible with supertype "LightningModule"
+        # No need for all arguments
         self,
         batch: Tuple[torch.Tensor, torch.Tensor],
         _: int,
