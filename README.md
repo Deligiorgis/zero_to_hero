@@ -1,4 +1,4 @@
-# Zero To Hero Deep Learning
+# Zero To Hero Tutorial on a Deep Learning Classification Task
 
 This repository tries to introduce the different stages that need to follow for classifying data based on their complexity.
 
@@ -23,7 +23,7 @@ In order to set up the necessary environment:
 > Some changes, e.g. in `setup.cfg`, might require you to run `pip install -e .` again.
 
 
-Optional and needed only once after `git clone`:
+Optional and needed only once after `git clone https://github.com/Deligiorgis/zero_to_hero.git`:
 
 3. install several [pre-commit] git hooks with:
    ```bash
