@@ -42,7 +42,7 @@ def main() -> None:
     model = FashionMNISTClassifier(configs=config)
 
     logger = TensorBoardLogger(
-        save_dir="tensorboard",
+        save_dir="tensorboard_logs",
         name="fashionMNIST",
         prefix="fashionMNIST",
         default_hp_metric=False,

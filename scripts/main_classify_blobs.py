@@ -32,7 +32,7 @@ def main() -> None:
     model = BlobsClassifierModel(config=config)
 
     logger = TensorBoardLogger(
-        save_dir="tensorboard",
+        save_dir="tensorboard_logs",
         name="blobs",
         prefix="blobs",
         default_hp_metric=False,
