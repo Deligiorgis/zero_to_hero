@@ -26,7 +26,7 @@ def compute_metrics(
             total_loss += output["losses"].sum()
             accuracy += (output["predictions"] == output["targets"].squeeze()).sum()
             n_samples += output["losses"].shape[0]
-        return total_loss / n_samples, accuracy / n_samples
+        return (total_loss / n_samples).cpu(), (accuracy / n_samples).cpu()
 
 
 def compute_graph_metrics(
