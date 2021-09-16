@@ -33,13 +33,19 @@ def standardize_step(
     train_data: np.ndarray,
     valid_data: np.ndarray,
     test_data: np.ndarray,
-) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
+    predict_data: Optional[np.ndarray] = None,
+) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray, np.ndarray]]:
     """
 
     :param train_data: np.ndarray, Training data
     :param valid_data: np.ndarray, Validation data
     :param test_data: np.ndarray, Test data
-    :return: Train data: np.ndarray, valid data: np.ndarray, test_data: np.ndarray
+    :param predict_data: np.ndarray, Predict data
+    :return:
+        Train data: np.ndarray
+        Valid data: np.ndarray
+        Test_data: np.ndarray
+        Predict_data if predict_data is not None: np.ndarray
     """
     train_data, mean, std = standardize_data(data=train_data, return_moments=True)
 
@@ -51,4 +57,12 @@ def standardize_step(
     assert isinstance(data, np.ndarray)
     test_data = data.copy()
 
-    return train_data, valid_data, test_data
+    if predict_data is None:
+        return train_data, valid_data, test_data
+
+    assert isinstance(predict_data, np.ndarray)
+    data = standardize_data(data=predict_data, mean=mean, std=std)
+    assert isinstance(data, np.ndarray)
+    predict_data = data.copy()
+
+    return train_data, valid_data, test_data, predict_data

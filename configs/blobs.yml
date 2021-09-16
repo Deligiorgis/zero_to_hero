@@ -1,11 +1,20 @@
-use_case_1: &USE_CASE_1
-  n_features: 2
+data_1: &DATA_1
+  in_features: 2
   centers:
     - [ 1, 1 ]
     - [ -1, 0 ]
+#  predict_centers:
+#    - [ 0.5, 0.5 ]
+#    - [ 0.5, 0 ]
 
-use_case_2: &USE_CASE_2
-  n_features: 2
+architecture_1: &ARCHITECTURE_1
+  out_features:
+    - 2
+  dropout:
+    - 0.0  # It is not used since the dropout from the last layer is going to be removed
+
+data_2: &DATA_2
+  in_features: 2
   centers:
     - [ 0, 0 ]
     - [ 1, 1 ]
@@ -14,33 +23,69 @@ use_case_2: &USE_CASE_2
     - [ -1, -1 ]
     - [ -1, 1 ]
     - [ 2, 2 ]
+#  predict_centers:
+#    - [ 0, 0 ]
+#    - [ 0.5, 0.5 ]
+#    - [ 0.5, -0.5 ]
+#    - [ -0.5, 0 ]
+#    - [ -0.5, -0.5 ]
+#    - [ -0.5, 0.5 ]
+#    - [ 1, 1 ]
 
-use_case_3: &USE_CASE_3
-  n_features: 6
+architecture_2: &ARCHITECTURE_2
+  out_features:
+    - 7
+  dropout:
+    - 0.0  # It is not used since the dropout from the last layer is going to be removed
+
+data_3: &DATA_3
+  in_features: 6
   centers:
     - [ -1, -1, 1.1, -1.4, 1, 0 ]
     - [ 1, -1.2, 1, -1, 1.4, -1 ]
     - [ -1, -1, 0.4, 1.9, 0, -1 ]
     - [ 0.1, -2, 2, -1, 1, -1.1 ]
     - [ -0.5, -2, 2, 0, 1, -1.5 ]
+#  predict_centers:
+#    - [ -0.5, -0.5, 0.55, -0.7, 0.5, 0 ]
+#    - [ 0.5, -0.6, 0.5, -0.5, 0.7, -0.5 ]
+#    - [ -0.5, -0.5, 0.2, 0.95, 0, -0.5 ]
+#    - [ 0.05, -1, 1, -0.5, 0.5, -0.55 ]
+#    - [ -0.25, -1, 1, 0, 0.5, -0.75 ]
+
+architecture_3_1: &ARCHITECTURE_3_1
+  out_features:
+    - 5
+  dropout:
+    - 0.0  # It is not used since the dropout from the last layer is going to be removed
+
+architecture_3_2: &ARCHITECTURE_3_2
+  out_features:
+    - 5
+    - 5
+  dropout:
+    - 0.1
+    - 0.0  # It is not used since the dropout from the last layer is going to be removed
 
 data:
-  <<: *USE_CASE_1
-  #  <<: *USE_CASE_2
-  #  <<: *USE_CASE_3
+  <<: *DATA_1
+  #  <<: *DATA_2
+  #  <<: *DATA_3
   cluster_std: 0.35
   n_samples: 500
   train_ratio: 0.8
   valid_ratio: 0.1
 
 model:
-  hidden_nodes: null
-  #  hidden_nodes: [ 20, 10 ]
+  <<: *ARCHITECTURE_1
+  #  <<: *ARCHITECTURE_2
+  #  <<: *ARCHITECTURE_3_1
+  #  <<: *ARCHITECTURE_3_2
 
 hyper_parameters:
   epochs: 1500
   patience: 10
-  learning_rate: 0.001
+  learning_rate: 0.001  # 1e-3
   batch_size: 100
   pin_memory: false
   num_workers: 0

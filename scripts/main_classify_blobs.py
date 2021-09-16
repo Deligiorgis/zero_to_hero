@@ -67,7 +67,6 @@ def main() -> None:
         model=model,
         datamodule=datamodule,
     )
-
     print("Best checkpoint path:", trainer.checkpoint_callback.best_model_path)
 
     trainer.test(
@@ -75,6 +74,14 @@ def main() -> None:
         datamodule=datamodule,
         ckpt_path="best",
     )
+
+    predictions_probabilities = trainer.predict(
+        model=model,
+        datamodule=datamodule,
+        return_predictions=True,
+        ckpt_path="best",
+    )
+    print(predictions_probabilities)
 
 
 if __name__ == "__main__":
