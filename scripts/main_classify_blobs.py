@@ -34,7 +34,7 @@ def main() -> None:
     logger = TensorBoardLogger(
         save_dir="tensorboard_logs",
         name="blobs",
-        prefix="blobs",
+        prefix=f"blobs--centers-{len(config['data']['centers'])}--dims-{config['data']['in_features']}",
         default_hp_metric=False,
         log_graph=True,
     )
