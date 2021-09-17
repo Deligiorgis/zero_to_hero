@@ -77,7 +77,6 @@ def main() -> None:
         model=model,
         datamodule=datamodule,
     )
-
     print("Best checkpoint path:", trainer.checkpoint_callback.best_model_path)
 
     trainer.test(

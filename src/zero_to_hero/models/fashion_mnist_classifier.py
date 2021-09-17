@@ -32,39 +32,44 @@ class FashionMNISTClassifier(pl.LightningModule):  # pylint: disable=too-many-an
 
         self.cnn_layers = CNN(
             in_channels=self.configs["data"]["in_channels"],
-            list_out_channels=self.configs["model"]["out_channels"],
-            list_kernel_size=self.configs["model"]["kernel_size"],
-            list_cnn_dropout=self.configs["model"]["cnn_dropout"],
+            list_out_channels=self.configs["model"]["convolutional"]["out_channels"],
+            list_kernel_size=self.configs["model"]["convolutional"]["kernel_size"],
+            list_cnn_dropout=self.configs["model"]["convolutional"]["cnn_dropout"],
         )
+
+        self.pooling_layer = nn.MaxPool2d(kernel_size=self.configs["model"]["pooling"]["kernel_size"])
 
         self.example_input_array = torch.rand(10, 1, 28, 28)
-        n_features = reduce(operator.mul, self.cnn_layers(self.example_input_array).shape[1:], 1)
+        in_features = reduce(operator.mul, self.pooling_layer(self.cnn_layers(self.example_input_array)).shape[1:], 1)
 
-        self.mlp = MLP(
-            n_targets=self.configs["data"]["n_targets"],
-            n_features=n_features,
-            hidden_nodes=self.configs["model"]["hidden_nodes"],
+        self.linear_layers = MLP(
+            in_features=in_features,
+            list_out_features=self.configs["model"]["linear"]["out_features"],
+            list_linear_dropout=self.configs["model"]["linear"]["dropout"],
         )
+
+        self.save_hyperparameters()
 
     def configure_optimizers(self) -> torch.optim.Optimizer:
         return torch.optim.Adam(
             params=self.parameters(),
             lr=self.configs["hyper_parameters"]["learning_rate"],
+            weight_decay=self.configs["hyper_parameters"]["weight_decay"],
         )
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:  # type: ignore # pylint: disable=arguments-differ
         # Signature of "forward" incompatible with supertype "LightningModule"
         # No need for all arguments
         self.embeds = self.cnn_layers(data)
-        return self.mlp(self.embeds.view(self.embeds.shape[0], -1))
+        return self.linear_layers(self.pooling_layer(self.embeds).view(self.embeds.shape[0], -1))
 
     def training_step(  # type: ignore # pylint: disable=arguments-differ
+        # Signature of "forward" incompatible with supertype "LightningModule"
+        # No need for all arguments
         self,
         batch: Tuple[torch.Tensor, torch.Tensor],
         _: int,
     ) -> STEP_OUTPUT:
-        # Signature of "forward" incompatible with supertype "LightningModule"
-        # No need for all arguments
         data, targets = batch
         outputs = self(data)
         losses = self.criterion(outputs, targets)

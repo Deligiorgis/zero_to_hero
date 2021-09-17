@@ -5,26 +5,31 @@ data:
   n_targets: 10
 
 model:
-  out_channels:
-    - 11
-    - 7
-    - 5
-  kernel_size:
-    - 3
-    - 5
-    - 7
-  cnn_dropout:
-    - 0.10
-    - 0.08
-    - 0.05
-
-  #  hidden_nodes: null
-  hidden_nodes: [ 50, 20 ]
+  convolutional:
+    out_channels:
+      - 5
+      - 11
+    kernel_size:
+      - 7
+      - 5
+    cnn_dropout:
+      - 0.10
+      - 0.05
+  pooling:
+    kernel_size: 4
+  linear:
+    out_features:
+      - 70
+      - 10  # Number of classes
+    dropout:
+      - 0.08
+      - 0.00 # It is not used since the dropout from the last layer is going to be removed
 
 hyper_parameters:
-  epochs: 50
+  epochs: 80
   patience: 10
   batch_size: 100
-  learning_rate: 0.001
+  learning_rate: 0.001  # 1e-3
+  weight_decay: 0.0001  # 1e-4
   num_workers: 0
   pin_memory: false
