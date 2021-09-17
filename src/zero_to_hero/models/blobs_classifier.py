@@ -38,6 +38,8 @@ class BlobsClassifierModel(pl.LightningModule):  # pylint: disable=too-many-ance
 
         self.example_input_array = torch.rand(10, self.config["data"]["in_features"])
 
+        self.save_hyperparameters()
+
     def forward(self, data: torch.Tensor) -> torch.Tensor:  # type: ignore # pylint: disable=arguments-differ
         # Signature of "forward" incompatible with supertype "LightningModule"
         # No need for all arguments
