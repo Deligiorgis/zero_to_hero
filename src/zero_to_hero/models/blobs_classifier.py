@@ -143,9 +143,9 @@ class BlobsClassifierModel(pl.LightningModule):  # pylint: disable=too-many-ance
         validation_loss, validation_accuracy = compute_metrics(outputs=outputs, device=self.device)
         if self.trainer is not None:
             self.log("step", self.trainer.current_epoch)
-        self.log("loss", {"val": validation_loss}, on_epoch=True)
-        self.log("accuracy", {"val": validation_accuracy}, on_epoch=True)
-        self.log("validation_loss", validation_loss)
+        self.log("loss", {"valid": validation_loss}, on_epoch=True)
+        self.log("accuracy", {"valid": validation_accuracy}, on_epoch=True)
+        self.log("validation_loss", validation_loss, on_epoch=True)
 
         if self.trainer is not None:
             self.log("step", self.trainer.current_epoch)

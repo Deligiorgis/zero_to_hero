@@ -103,9 +103,9 @@ class FashionMNISTClassifier(pl.LightningModule):  # pylint: disable=too-many-an
 
     def validation_epoch_end(self, outputs: EPOCH_OUTPUT) -> None:
         validation_loss, validation_accuracy = compute_metrics(outputs=outputs, device=self.device)
-        self.log("loss", {"val": validation_loss}, on_epoch=True)
-        self.log("accuracy", {"val": validation_accuracy}, on_epoch=True)
-        self.log("validation_loss", validation_loss)
+        self.log("loss", {"valid": validation_loss}, on_epoch=True)
+        self.log("accuracy", {"valid": validation_accuracy}, on_epoch=True)
+        self.log("validation_loss", validation_loss, on_epoch=True)
 
         if self.trainer is not None:
             self.log("step", self.trainer.current_epoch)
