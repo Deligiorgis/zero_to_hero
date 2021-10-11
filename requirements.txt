@@ -37,6 +37,8 @@ scipy==1.7.1
 
 # Packaging
 setuptools==58.2.0
+
+# Model Monitoring & Versioning
 tensorboardX==2.4
 
 # PyTorch
