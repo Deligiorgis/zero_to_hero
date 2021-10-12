@@ -64,10 +64,10 @@ class BlobsClassifierModel(pl.LightningModule):  # pylint: disable=too-many-ance
             predictions = outputs.argmax(dim=1)
         return {
             "loss": losses.mean(),
-            "losses": losses.detach(),
-            "data": data.detach(),
-            "predictions": predictions.detach(),
-            "targets": targets.detach(),
+            "losses": losses.detach().cpu(),
+            "data": data.detach().cpu(),
+            "predictions": predictions.detach().cpu(),
+            "targets": targets.detach().cpu(),
         }
 
     def get_figure(self, data: torch.Tensor, targets: torch.Tensor) -> plt.Figure:
