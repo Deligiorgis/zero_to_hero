@@ -1,11 +1,11 @@
 """
 Deep Learning Models that can be re-used in different use-cases
 """
-from typing import List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import dgl
 import torch
-from dgl.nn.pytorch.conv import GraphConv
+from dgl.nn.pytorch import GraphConv, SortPooling
 from torch import nn
 
 
@@ -86,49 +86,119 @@ class CNN(nn.Module):
         return self.cnn_layers(data)
 
 
-class GraphEncoder(nn.Module):
+class DGCNN(nn.Module):
     """
-    Graph Encoder Module
+    An end-to-end deep learning architecture for graph classification.
+    paper link: https://muhanzhang.github.io/papers/AAAI_2018_DGCNN.pdf
+    Attributes:
+        num_layers(int): num of gcn layers
+        hidden_units(int): num of hidden units
+        k(int, optional): The number of nodes to hold for each graph in SortPooling.
+        gcn_type(str): type of gcn layer, 'gcn' for GraphConv and 'sage' for SAGEConv
+        node_attributes(Tensor, optional): node attribute
+        edge_weights(Tensor, optional): edge weight
+        node_embedding(Tensor, optional): pre-trained node embedding
+        use_embedding(bool, optional): whether to use node embedding. Note that if 'use_embedding' is set True
+                             and 'node_embedding' is None, will automatically randomly initialize node embedding.
+        num_nodes(int, optional): num of nodes
+        dropout(float, optional): dropout rate
+        max_z(int, optional): default max vocab size of node labeling, default 1000.
     """
 
-    def __init__(self, in_features: int, list_out_features: List[int], list_gnn_dropout: List[float]) -> None:
+    def __init__(
+        self,
+        ndata: torch.Tensor,
+        edata: torch.Tensor,
+        config: Dict[str, Any],
+    ):
         super().__init__()
 
-        self.layers = nn.ModuleList()
+        self.node_attributes_lookup = nn.Embedding.from_pretrained(ndata)
+        self.node_attributes_lookup.weight.requires_grad = False
 
-        num_layers = len(list_out_features)
-        for enum, (out_feats, dropout) in enumerate(zip(list_out_features, list_gnn_dropout)):
-            self.layers.extend(
-                [
-                    GraphConv(
-                        in_feats=in_features if enum == 0 else list_out_features[enum - 1],
-                        out_feats=out_feats,
-                        norm="both",
-                        weight=True,
-                        bias=True,
-                        activation=nn.ReLU() if enum < num_layers - 1 else None,
-                        allow_zero_in_degree=False,
-                    ),
-                    nn.Dropout(p=dropout),
-                ]
-            )
-        self.layers = self.layers[:-1]  # remove last Dropout
+        self.edge_weights_lookup = nn.Embedding.from_pretrained(edata)
+        self.edge_weights_lookup.weight.requires_grad = False
 
-    def forward(self, feats: torch.Tensor, blocks: dgl.DGLHeteroGraph) -> torch.Tensor:
+        self.node_embedding = nn.Embedding(ndata.shape[0] + config["max_z"], config["hidden_units"])
+
+        initial_dim = self.node_attributes_lookup.embedding_dim + self.node_embedding.embedding_dim * 2
+
+        self.gcn_layers = nn.ModuleList()
+        self.gcn_layers.append(GraphConv(initial_dim, config["hidden_units"]))
+        for _ in range(config["num_layers"] - 1):
+            self.gcn_layers.append(GraphConv(config["hidden_units"], config["hidden_units"]))
+        self.gcn_layers.append(GraphConv(config["hidden_units"], 1))
+
+        self.pooling = SortPooling(k=config["k"])
+
+        conv1d_channels = [16, 32]
+        total_latent_dim = config["hidden_units"] * config["num_layers"] + 1
+        conv1d_kws = [total_latent_dim, 5]
+        dense_dim = int((config["k"] - 2) / 2 + 1)
+        dense_dim = (dense_dim - conv1d_kws[1] + 1) * conv1d_channels[1]
+
+        self.cnn = nn.Sequential(
+            nn.Conv1d(1, conv1d_channels[0], conv1d_kws[0], conv1d_kws[0]),
+            nn.ReLU(),
+            nn.MaxPool1d(2, 2),
+            nn.Conv1d(conv1d_channels[0], conv1d_channels[1], conv1d_kws[1], 1),
+            nn.ReLU(),
+        )
+
+        self.mlp = nn.Sequential(
+            nn.Linear(dense_dim, 128),
+            nn.ReLU(),
+            nn.Dropout(p=config["dropout"]),
+            nn.Linear(128, 1),
+        )
+
+    def forward(
+        self,
+        graph: dgl.DGLHeteroGraph,
+        feats: torch.Tensor,
+        node_id: torch.Tensor,
+        edge_id: torch.Tensor,
+    ) -> torch.Tensor:
         """
-
-        :param feats: torch.Tensor, node features
-        :param blocks: dgl.DGLHeteroGraph, list of blocks (one per layer)
-        :return: torch.Tensor, node embedding vectors
+        forward pass of the SEAL model
+        Apply:
+         1. Graph layer
+         2. SortPooling
+         3. CNN
+         4. MLP
         """
-        embeds = feats
-        for enum, layer in enumerate(self.layers):
-            if isinstance(layer, GraphConv):
-                graph_index = int(enum / 2)
-                embeds = layer(
-                    graph=blocks[graph_index],
-                    feat=embeds,
+        node_feats = torch.cat(
+            [
+                self.node_attributes_lookup(node_id),
+                self.node_embedding(feats),
+                self.node_embedding(self.node_attributes_lookup.num_embeddings + node_id),
+            ],
+            1,
+        )
+
+        list_node_feats = [node_feats]
+        for layer in self.gcn_layers:
+            list_node_feats += [
+                torch.tanh(
+                    layer(
+                        graph=graph,
+                        feat=list_node_feats[-1],
+                        edge_weight=self.edge_weights_lookup(edge_id),
+                    )
                 )
-            else:
-                embeds = layer(embeds)
-        return embeds
+            ]
+
+        node_feats = torch.cat(list_node_feats[1:], dim=-1)
+        del list_node_feats  # for memory efficiency
+
+        # SortPooling
+        node_feats = self.pooling(graph, node_feats)
+        node_feats = node_feats.unsqueeze(1)
+
+        # CNN
+        node_feats = self.cnn(node_feats)
+        node_feats = node_feats.view(node_feats.shape[0], -1)
+
+        # MLP
+        node_feats = self.mlp(node_feats)
+        return node_feats

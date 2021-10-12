@@ -1,0 +1,26 @@
+hop: 1
+neg_samples: 1
+subsample_ratio: 0.1
+
+save_dir: data/ogbl_collab_seal
+
+sampler:
+  hop: 1
+  batch_size: 32
+  num_workers: 6
+  pin_memory: true
+
+batch_size: 128  # 32
+num_workers: 2
+pin_memory: false
+
+hidden_units: 64  # 32 128
+num_layers: 3
+max_z: 1000
+dropout: 0.55
+k: 45
+
+hyper_parameters:
+  epochs: 50
+  patience: 20
+  learning_rate: 0.0001

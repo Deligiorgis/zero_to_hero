@@ -1,6 +1,7 @@
 """
 Main script to fit and predict the links (collaborations) between the authors
 """
+import warnings
 from pathlib import Path
 
 import pytorch_lightning as pl
@@ -9,10 +10,10 @@ from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from zero_to_hero.config_reader import read_config
-from zero_to_hero.data.collab import CollabDataModule
-from zero_to_hero.models.link_prediction_collab import LinkPredictorCollab
+from zero_to_hero.data.collab import SEALCollabDataModule
+from zero_to_hero.models.link_prediction_collab import SEALLinkPredictorCollab
 
-# warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore")
 
 
 def main() -> None:
@@ -27,15 +28,21 @@ def main() -> None:
 
     config = read_config(path=Path("configs/collab.yml"))
 
-    datamodule = CollabDataModule(config=config)
-    model = LinkPredictorCollab(config=config)
+    datamodule = SEALCollabDataModule(config=config)
+
+    ndata, edata = datamodule.get_data()
+    model = SEALLinkPredictorCollab(
+        ndata=ndata,
+        edata=edata,
+        config=config,
+    )
 
     logger = TensorBoardLogger(
         save_dir="tensorboard_logs",
         name="collab",
         prefix="collab",
         default_hp_metric=False,
-        log_graph=True,
+        log_graph=False,
     )
     early_stop_callback = EarlyStopping(
         monitor="validation_loss",
@@ -44,9 +51,17 @@ def main() -> None:
         mode="min",
         check_on_train_epoch_end=True,
     )
-    checkpoint_callback = ModelCheckpoint(
+    loss_checkpoint_callback = ModelCheckpoint(
         monitor="validation_loss",
         mode="min",
+        verbose=True,
+        save_last=True,
+        save_top_k=1,
+        filename="collab-link-prediction-{epoch:02d}-{validation_loss:.4f}",
+    )
+    hits_checkpoint_callback = ModelCheckpoint(
+        monitor="validation_hits",
+        mode="max",
         verbose=True,
         save_last=True,
         save_top_k=1,
@@ -58,8 +73,11 @@ def main() -> None:
         logger=logger,
         callbacks=[
             early_stop_callback,
-            checkpoint_callback,
+            loss_checkpoint_callback,
+            hits_checkpoint_callback,
         ],
+        # fast_dev_run=10,
+        # resume_from_checkpoint="tensorboard_logs/collab/version_11/checkpoints/last.ckpt",
     )
 
     trainer.fit(
