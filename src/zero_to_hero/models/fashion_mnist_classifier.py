@@ -77,11 +77,11 @@ class FashionMNISTClassifier(pl.LightningModule):  # pylint: disable=too-many-an
             predictions = outputs.detach().argmax(dim=1)
         return {
             "loss": losses.mean(),
-            "losses": losses.detach(),
-            "data": data.detach(),
-            "predictions": predictions.detach(),
-            "targets": targets.detach(),
-            "embeds": self.embeds.detach(),
+            "losses": losses.detach().cpu(),
+            "data": data.detach().cpu(),
+            "predictions": predictions.detach().cpu(),
+            "targets": targets.detach().cpu(),
+            "embeds": self.embeds.detach().cpu(),
         }
 
     def training_epoch_end(self, outputs: EPOCH_OUTPUT) -> None:
