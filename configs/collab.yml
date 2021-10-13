@@ -2,13 +2,17 @@ data:
   standardize_data: true
   normalize_weights: true
 
-  subsample_ratio: 0.11
+  subsample_ratio: 0.01
   hop: 1
 
   sampler:
     batch_size: 32
     num_workers: 6
     pin_memory: true
+
+  batch_size: 32
+  num_workers: 2
+  pin_memory: true
 
 model:
   hidden_units: 64  # 32 128

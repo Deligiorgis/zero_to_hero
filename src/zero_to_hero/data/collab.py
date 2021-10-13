@@ -11,6 +11,7 @@ import dgl
 import numpy as np
 import pytorch_lightning as pl
 import torch
+from dgl.data.graph_serialize import load_labels_v2
 from dgl.dataloading.negative_sampler import Uniform
 from ogb.linkproppred import DglLinkPropPredDataset
 from pytorch_lightning.utilities.types import EVAL_DATALOADERS, TRAIN_DATALOADERS
@@ -29,12 +30,16 @@ class GraphDataSet(Dataset):
     def __init__(self, path: Union[Path, str]) -> None:
         self.path = str(path)
 
+        links = load_labels_v2(filename=str(self.path))
+        # _, links = dgl.load_graphs(filename=str(self.path))
+        self.length = links["links"].shape[0]
+
     def __len__(self) -> int:
-        return
+        return self.length
 
     def __getitem__(self, index: int) -> Tuple[dgl.DGLHeteroGraph, torch.Tensor]:
-        graph, link = dgl.load_graphs(filename=self.path, idx_list=index)
-        return graph, link
+        graph, links = dgl.load_graphs(filename=self.path, idx_list=index)
+        return graph, links["links"]
 
 
 class EdgeDataSet(Dataset):
@@ -42,7 +47,12 @@ class EdgeDataSet(Dataset):
     Edge Dataset for speeding up the sampling of the graphs
     """
 
-    def __init__(self, edges: torch.Tensor, links: torch.Tensor, transform: Callable) -> None:
+    def __init__(
+        self,
+        edges: torch.Tensor,
+        links: torch.Tensor,
+        transform: Callable[[torch.Tensor], dgl.DGLHeteroGraph],
+    ) -> None:
         self.edges = edges
         self.transform = transform
         self.links = links
@@ -89,13 +99,13 @@ def double_radius_node_labeling(subgraph: dgl.DGLHeteroGraph, src: int, dst: int
     dist = dist2src + dist2dst
     dist_over_2, dist_mod_2 = dist // 2, dist % 2
 
-    z = 1 + torch.min(dist2src, dist2dst)
-    z += dist_over_2 * (dist_over_2 + dist_mod_2 - 1)
-    z[src] = 1.0
-    z[dst] = 1.0
-    z[torch.isnan(z)] = 0.0
+    node_label = 1 + torch.min(dist2src, dist2dst)
+    node_label += dist_over_2 * (dist_over_2 + dist_mod_2 - 1)
+    node_label[src] = 1.0
+    node_label[dst] = 1.0
+    node_label[torch.isnan(node_label)] = 0.0
 
-    return z.to(torch.long)
+    return node_label.to(torch.long)
 
 
 class CollabDataModule(pl.LightningDataModule):
@@ -145,7 +155,7 @@ class CollabDataModule(pl.LightningDataModule):
         if self.config["data"]["standardize_data"]:
             ndata = torch.from_numpy(
                 standardize_data(
-                    data=ndata,
+                    data=ndata.numpy(),
                     return_moments=False,
                 )
             )
@@ -204,7 +214,7 @@ class CollabDataModule(pl.LightningDataModule):
                 graph_list, links = self.generate_list_of_graphs_and_links(
                     edges=edges,
                     links=links,
-                    graph=simple_graph,
+                    graph=simple_graph,  # TODO: add valid edges
                 )
                 dgl.save_graphs(str(path), graph_list, {"links": links})
             self.test_dataset = GraphDataSet(path=path)
@@ -212,13 +222,19 @@ class CollabDataModule(pl.LightningDataModule):
     def sample_subgraph(self, target_nodes: torch.Tensor, graph: dgl.DGLHeteroGraph) -> dgl.DGLHeteroGraph:
         """
 
-        :param target_nodes:
-        :return:
+        Parameters
+        ----------
+        target_nodes
+        graph
+
+        Returns
+        -------
+
         """
         list_sample_nodes = [target_nodes]
         frontiers = target_nodes
 
-        for i in range(self.config["data"]["hop"]):
+        for _ in range(self.config["data"]["hop"]):
             frontiers = graph.out_edges(frontiers)[1]
             frontiers = torch.unique(frontiers)
             list_sample_nodes.append(frontiers)
@@ -239,15 +255,14 @@ class CollabDataModule(pl.LightningDataModule):
             link_id = subgraph.edge_ids(v_id, u_id, return_uv=True)[2]
             subgraph.remove_edges(link_id)
 
-        z = double_radius_node_labeling(subgraph, u_id, v_id)
-        subgraph.ndata["z"] = z
-
+        subgraph.ndata["z"] = double_radius_node_labeling(subgraph, u_id, v_id)
         return subgraph
 
     @staticmethod
-    def _collate(batch) -> Tuple[dgl.DGLHeteroGraph, torch.Tensor]:
-        batch_graphs, batch_links = map(list, zip(*batch))
-        return dgl.batch(batch_graphs), torch.stack(batch_links)
+    def _collate(batch: List[Tuple[dgl.DGLHeteroGraph, torch.Tensor]]) -> Tuple[dgl.DGLHeteroGraph, torch.Tensor]:
+        batch_graphs, batch_links = tuple(map(list, zip(*batch)))
+        return dgl.batch(batch_graphs), torch.stack(batch_links)  # type: ignore # False Positive from MyPy
+        # batch_links: List[torch.Tensor]
 
     def generate_list_of_graphs_and_links(
         self,
@@ -255,6 +270,18 @@ class CollabDataModule(pl.LightningDataModule):
         links: torch.Tensor,
         graph: dgl.DGLHeteroGraph,
     ) -> Tuple[List[dgl.DGLHeteroGraph], torch.Tensor]:
+        """
+
+        Parameters
+        ----------
+        edges
+        links
+        graph
+
+        Returns
+        -------
+
+        """
         sample_subgraph_partial = partial(self.sample_subgraph, graph=graph)
         edge_dataset = EdgeDataSet(
             edges=edges,
@@ -288,10 +315,22 @@ class CollabDataModule(pl.LightningDataModule):
         graph: dgl.DGLHeteroGraph,
         phase: str,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+
+        Parameters
+        ----------
+        split_edge
+        graph
+        phase
+
+        Returns
+        -------
+
+        """
         pos_edges = split_edge[phase]["edge"]
-        eids = graph.edge_ids(pos_edges[:, 0], pos_edges[:, 1])
         if phase == "train":
             neg_sampler = Uniform(k=1)
+            eids = graph.edge_ids(u=pos_edges[:, 0], v=pos_edges[:, 1])
             neg_edges = torch.stack(neg_sampler(graph, eids), dim=1)
         else:
             neg_edges = split_edge[phase]["edge_neg"]
@@ -329,9 +368,14 @@ class CollabDataModule(pl.LightningDataModule):
     def shuffle_edges_and_links(edges: torch.Tensor, links: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
 
-        :param edges:
-        :param links:
-        :return:
+        Parameters
+        ----------
+        edges
+        links
+
+        Returns
+        -------
+
         """
         perm = torch.randperm(edges.shape[0])
         edges = edges[perm]
