@@ -1,6 +1,7 @@
 """
 Main script to fit and predict the links (collaborations) between the authors
 """
+import warnings
 from pathlib import Path
 
 import pytorch_lightning as pl
@@ -12,7 +13,7 @@ from zero_to_hero.config_reader import read_config
 from zero_to_hero.data.collab import CollabDataModule
 from zero_to_hero.models.link_prediction_collab import LinkPredictorCollab
 
-# warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore")
 
 
 def main() -> None:
@@ -40,14 +41,14 @@ def main() -> None:
     early_stop_callback = EarlyStopping(
         monitor="validation_loss",
         patience=config["hyper_parameters"]["patience"],
-        verbose=True,
+        verbose=False,
         mode="min",
         check_on_train_epoch_end=True,
     )
     checkpoint_callback = ModelCheckpoint(
         monitor="validation_loss",
         mode="min",
-        verbose=True,
+        verbose=False,
         save_last=True,
         save_top_k=1,
         filename="collab-link-prediction-{epoch:02d}-{validation_loss:.4f}",
