@@ -112,7 +112,7 @@ class BlobsClassifierModel(pl.LightningModule):  # pylint: disable=too-many-ance
         if self.trainer is not None:
             self.log("step", self.trainer.current_epoch)
             assert isinstance(outputs[0], dict)
-            if self.trainer.current_epoch % 25 == 0:
+            if self.trainer.current_epoch % 15 == 0 and self.trainer.current_epoch < 100:
                 dict_data = get_data_from_outputs(
                     keys=["data", "targets", "predictions"],
                     outputs=outputs,
@@ -150,7 +150,7 @@ class BlobsClassifierModel(pl.LightningModule):  # pylint: disable=too-many-ance
         if self.trainer is not None:
             self.log("step", self.trainer.current_epoch)
             assert isinstance(outputs[0], dict)
-            if self.trainer.current_epoch % 25 == 0:
+            if self.trainer.current_epoch % 15 == 0 and self.trainer.current_epoch < 100:
                 dict_data = get_data_from_outputs(
                     keys=["data", "targets", "predictions"],
                     outputs=outputs,
