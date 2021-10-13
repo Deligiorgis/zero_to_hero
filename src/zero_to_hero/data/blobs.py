@@ -80,9 +80,13 @@ class BlobsDataModule(pl.LightningDataModule):
 
         n_centers = len(self.config["data"]["centers"])
 
+        print("Training data & targets.")
         train_data, train_targets = self.get_data_and_targets(int(train_n_samples / n_centers))
+        print("Validation data & targets.")
         valid_data, valid_targets = self.get_data_and_targets(int(valid_n_samples / n_centers))
+        print("Testing data & targets.")
         test_data, test_targets = self.get_data_and_targets(int(test_n_samples / n_centers))
+        print("Predicting data & targets.")
         predict_data, _ = self.get_data_and_targets(n_centers * 4)
 
         assert isinstance(predict_data, np.ndarray)
