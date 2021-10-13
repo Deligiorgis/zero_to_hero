@@ -53,7 +53,9 @@ and create a virtual environment `.venv`:
    ```bash
    pip install -r requirements.txt
    ```
-5. install `zero_to_hero` package:
+5. [PyTorch-installation] based on GPU availability
+6. [DGL-installation] based on GPU availability
+7. install `zero_to_hero` package:
    ```bash
    pip install -e .
    ```
@@ -142,6 +144,8 @@ This project has been set up using [PyScaffold] 4.0.2 and the [dsproject extensi
 [PyTorch]: https://pytorch.org/
 [OGB]: https://ogb.stanford.edu/
 [DGL]: https://www.dgl.ai/
+[DGL-installation]: https://www.dgl.ai/pages/start.html
+[PyTorch-installation]: https://pytorch.org/
 [PyTorch-Lightning]: https://www.pytorchlightning.ai/
 [Lightning-Bolts]: https://lightning-bolts.readthedocs.io/en/latest/
 [Link Prediction Based on Graph Neural Networks]: https://arxiv.org/abs/1802.09691
