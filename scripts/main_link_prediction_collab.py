@@ -10,8 +10,8 @@ from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from zero_to_hero.config_reader import read_config
-from zero_to_hero.data.collab import SEALCollabDataModule
-from zero_to_hero.models.link_prediction_collab import SEALLinkPredictorCollab
+from zero_to_hero.data.collab import CollabDataModule
+from zero_to_hero.models.link_prediction_collab import LinkPredictorCollab
 
 warnings.filterwarnings("ignore")
 
@@ -28,12 +28,13 @@ def main() -> None:
 
     config = read_config(path=Path("configs/collab.yml"))
 
-    datamodule = SEALCollabDataModule(config=config)
+    datamodule = CollabDataModule(config=config)
+    datamodule.prepare_data()
+    datamodule.setup()
 
-    ndata, edata = datamodule.get_data()
-    model = SEALLinkPredictorCollab(
-        ndata=ndata,
-        edata=edata,
+    model = LinkPredictorCollab(
+        ndata=datamodule.ndata,
+        edata=datamodule.edata,
         config=config,
     )
 
@@ -90,6 +91,7 @@ def main() -> None:
         model=model,
         datamodule=datamodule,
         ckpt_path="best",
+        verbose=True,
     )
 
 

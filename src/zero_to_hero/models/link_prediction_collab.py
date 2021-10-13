@@ -13,7 +13,7 @@ from torch.nn import functional as F
 from zero_to_hero.models.models import DGCNN
 
 
-class SEALLinkPredictorCollab(pl.LightningModule):  # pylint: disable=too-many-ancestors
+class LinkPredictorCollab(pl.LightningModule):  # pylint: disable=too-many-ancestors
     # the ancestors come from PyTorch Lightning
     """
     SEAL (learning from Subgraphs, Embeddings and Attributes for Link prediction) model implementation
@@ -29,7 +29,7 @@ class SEALLinkPredictorCollab(pl.LightningModule):  # pylint: disable=too-many-a
 
         self.sigmoid = torch.nn.Sigmoid()
 
-        self.pos_weight = torch.tensor([12.0])  # 3.0 (v8)
+        self.pos_weight = torch.tensor([3.0])
 
         self.save_hyperparameters(ignore=["ndata", "edata"])
 
