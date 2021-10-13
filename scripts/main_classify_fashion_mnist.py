@@ -83,7 +83,7 @@ def main() -> None:
         model=model,
         datamodule=datamodule,
         ckpt_path="best",
-        verbose=False,
+        verbose=True,
     )
 
 
