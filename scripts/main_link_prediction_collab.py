@@ -55,7 +55,7 @@ def main() -> None:
     loss_checkpoint_callback = ModelCheckpoint(
         monitor="validation_loss",
         mode="min",
-        verbose=False,
+        verbose=True,
         save_last=True,
         save_top_k=1,
         filename="collab-link-prediction-{epoch:02d}-{validation_loss:.4f}",
