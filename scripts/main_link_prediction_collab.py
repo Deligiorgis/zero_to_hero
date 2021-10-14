@@ -77,7 +77,6 @@ def main() -> None:
             loss_checkpoint_callback,
             hits_checkpoint_callback,
         ],
-        fast_dev_run=10,
     )
 
     trainer.fit(
