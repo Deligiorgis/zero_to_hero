@@ -121,6 +121,7 @@ class CollabDataModule(pl.LightningDataModule):
 
         self.ndata: torch.Tensor = torch.empty(1)
         self.edata: torch.Tensor = torch.empty(1)
+        self.test_edata: torch.Tensor = torch.empty(1)
 
     def prepare_data(self) -> None:
         DglLinkPropPredDataset(
@@ -141,8 +142,24 @@ class CollabDataModule(pl.LightningDataModule):
         for key, values in multi_graph.edata.items():
             multi_graph.edata[key] = values.float()
 
+        test_graph = dgl.add_edges(
+            g=multi_graph,
+            u=split_edge["valid"]["edge"][:, 0],
+            v=split_edge["valid"]["edge"][:, 1],
+            data={
+                "weight": split_edge["valid"]["weight"].unsqueeze(1).float(),
+                "year": split_edge["valid"]["year"].unsqueeze(1).float(),
+            },
+        )
+
         simple_graph = dgl.to_simple(
             g=multi_graph,
+            copy_ndata=True,
+            copy_edata=True,
+            aggregator="sum",
+        )
+        test_simple_graph = dgl.to_simple(
+            g=test_graph,
             copy_ndata=True,
             copy_edata=True,
             aggregator="sum",
@@ -158,13 +175,17 @@ class CollabDataModule(pl.LightningDataModule):
             )
         self.ndata = ndata
 
-        edata = simple_graph.edata["weight"].float()
+        self.edata = simple_graph.edata["weight"].float()
+        self.test_edata = test_simple_graph.edata["weight"].float()
         if self.config["data"]["normalize_weights"]:
-            edata /= edata.max()
-        self.edata = edata
+            self.edata /= self.edata.max()
+            self.test_edata /= self.edata.max()
 
         simple_graph.ndata.clear()
         simple_graph.edata.clear()
+
+        test_simple_graph.ndata.clear()
+        test_simple_graph.edata.clear()
 
         if stage in ("train", "fit", None):
             path = (
@@ -201,17 +222,20 @@ class CollabDataModule(pl.LightningDataModule):
             self.valid_dataset = GraphDataSet(path=path)
 
         if stage in ("test", None):
-            path = Path("data/ogbl_collab_seal") / f"valid_{self.config['data']['hop']}-hop_1-subsample.bin"
+            path = (
+                Path("data/ogbl_collab_seal")
+                / f"test_{self.config['data']['hop']}-hop_1_with_valid_edges_subsample.bin"
+            )
             if not path.exists():
                 edges, links = self.generate_edges_and_links(
                     split_edge=split_edge,
-                    graph=simple_graph,
+                    graph=test_simple_graph,
                     phase="test",
                 )
                 graph_list, links = self.generate_list_of_graphs_and_links(
                     edges=edges,
                     links=links,
-                    graph=simple_graph,  # TODO: add valid edges
+                    graph=test_simple_graph,
                 )
                 dgl.save_graphs(str(path), graph_list, {"links": links})
             self.test_dataset = GraphDataSet(path=path)

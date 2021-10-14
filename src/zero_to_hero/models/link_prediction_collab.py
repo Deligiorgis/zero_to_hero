@@ -25,7 +25,11 @@ class LinkPredictorCollab(pl.LightningModule):  # pylint: disable=too-many-ances
 
         self.config = config
 
-        self.model = DGCNN(ndata=ndata, edata=edata, config=self.config)
+        self.model = DGCNN(
+            ndata=ndata,
+            edata=edata,
+            config=self.config,
+        )
 
         self.sigmoid = torch.nn.Sigmoid()
 

@@ -46,10 +46,10 @@ def main() -> None:
         log_graph=False,
     )
     early_stop_callback = EarlyStopping(
-        monitor="validation_loss",
+        monitor="validation_hits",
         patience=config["hyper_parameters"]["patience"],
-        verbose=False,
-        mode="min",
+        verbose=True,
+        mode="max",
         check_on_train_epoch_end=True,
     )
     loss_checkpoint_callback = ModelCheckpoint(
@@ -77,8 +77,7 @@ def main() -> None:
             loss_checkpoint_callback,
             hits_checkpoint_callback,
         ],
-        # fast_dev_run=10,
-        # resume_from_checkpoint="tensorboard_logs/collab/version_11/checkpoints/last.ckpt",
+        fast_dev_run=10,
     )
 
     trainer.fit(
@@ -87,6 +86,13 @@ def main() -> None:
     )
     print("Best checkpoint path:", trainer.checkpoint_callback.best_model_path)
 
+    model = LinkPredictorCollab.load_from_checkpoint(
+        checkpoint_path=trainer.checkpoint_callback.best_model_path,
+        map_location="cpu",
+        ndata=datamodule.ndata,
+        edata=datamodule.test_edata,
+        config=config,
+    )
     trainer.test(
         model=model,
         datamodule=datamodule,
