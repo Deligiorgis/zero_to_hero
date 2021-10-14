@@ -64,7 +64,7 @@ and create a virtual environment `.venv`:
 
 Optional and needed only once after `git clone https://github.com/Deligiorgis/zero_to_hero.git`:
 
-3. install several [pre-commit] git hooks with:
+8. install several [pre-commit] git hooks with:
    ```bash
    pre-commit install
    # You might also want to run `pre-commit autoupdate`
