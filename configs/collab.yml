@@ -2,12 +2,12 @@ data:
   standardize_data: true
   normalize_weights: true
 
-  subsample_ratio: 0.01
+  subsample_ratio: 0.1
   hop: 1
 
   sampler:
     batch_size: 32
-    num_workers: 6
+    num_workers: 4
     pin_memory: true
 
   batch_size: 32
@@ -15,12 +15,39 @@ data:
   pin_memory: true
 
 model:
-  hidden_units: 64  # 32 128
-  num_layers: 3
+  graph_conv:
+    out_feats:
+      - 32  # 64  # 32 128
+      - 32
+      - 1
+    dropout:
+      - 0.5
+      - 0.5
+      - 0.0
+  convolutional:
+    out_channels:
+      - 16
+      - 32
+    kernel_size:
+      - null
+      - 5
+    cnn_dropout:
+      - 0.10
+      - 0.05
+  sort_pooling:
+    k: 40
+  linear:
+    out_features:
+      - 128
+      - 128
+      - 1
+    dropout:
+      - 0.15
+      - 0.15
+      - 0.00 # It is not used since the dropout from the last layer is going to be removed
 
-  dropout: 0.55
+  embedding_dim: 32
   max_z: 1000
-  k: 45
 
 hyper_parameters:
   epochs: 50
@@ -28,5 +55,5 @@ hyper_parameters:
   learning_rate: 0.0001
 
   batch_size: 128  # 32
-  num_workers: 2
+  num_workers: 0
   pin_memory: false

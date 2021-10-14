@@ -35,6 +35,8 @@ class FashionMNISTClassifier(pl.LightningModule):  # pylint: disable=too-many-an
             list_out_channels=self.configs["model"]["convolutional"]["out_channels"],
             list_kernel_size=self.configs["model"]["convolutional"]["kernel_size"],
             list_cnn_dropout=self.configs["model"]["convolutional"]["cnn_dropout"],
+            dim=2,
+            activation_as_last_layer=False,
         )
 
         self.pooling_layer = nn.MaxPool2d(kernel_size=self.configs["model"]["pooling"]["kernel_size"])

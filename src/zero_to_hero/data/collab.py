@@ -29,17 +29,14 @@ class GraphDataSet(Dataset):
 
     def __init__(self, path: Union[Path, str]) -> None:
         self.path = str(path)
-
-        links = load_labels_v2(filename=str(self.path))
-        # _, links = dgl.load_graphs(filename=str(self.path))
-        self.length = links["links"].shape[0]
+        self.links = load_labels_v2(filename=self.path)["links"]
 
     def __len__(self) -> int:
-        return self.length
+        return self.links.shape[0]
 
     def __getitem__(self, index: int) -> Tuple[dgl.DGLHeteroGraph, torch.Tensor]:
-        graph, links = dgl.load_graphs(filename=self.path, idx_list=index)
-        return graph, links["links"]
+        graph, _ = dgl.load_graphs(filename=self.path, idx_list=[index])
+        return graph[0], self.links[index]
 
 
 class EdgeDataSet(Dataset):
@@ -68,8 +65,8 @@ class EdgeDataSet(Dataset):
 def double_radius_node_labeling(subgraph: dgl.DGLHeteroGraph, src: int, dst: int) -> torch.Tensor:
     """
     Double Radius Node labeling
-    d = r(i,u)+r(i,v)
-    label = 1+ min(r(i,u),r(i,v))+ (d//2)*(d//2+d%2-1)
+    d = r(i, u) + r(i, v)
+    node_label = 1 + min(r(i, u), r(i, v)) + (d // 2) * (d // 2 + d % 2 - 1)
     Isolated nodes in subgraph will be set as zero.
     Extreme large graph may cause memory error.
     Args:
@@ -77,7 +74,7 @@ def double_radius_node_labeling(subgraph: dgl.DGLHeteroGraph, src: int, dst: int
         src(int): node id of one of src node in new subgraph
         dst(int): node id of one of dst node in new subgraph
     Returns:
-        z(Tensor): node labeling tensor
+        node_label(Tensor): node labeling tensor
     """
     adj = subgraph.adj().to_dense().numpy()
     src, dst = (dst, src) if src > dst else (src, dst)
@@ -243,11 +240,9 @@ class CollabDataModule(pl.LightningDataModule):
         sample_nodes = torch.unique(sample_nodes)
         subgraph = dgl.node_subgraph(graph, sample_nodes)
 
-        # Each node should have unique node id in the new subgraph
         u_id = int(torch.nonzero(subgraph.ndata[dgl.NID] == int(target_nodes[0]), as_tuple=False))
         v_id = int(torch.nonzero(subgraph.ndata[dgl.NID] == int(target_nodes[1]), as_tuple=False))
 
-        # remove link between target nodes in positive subgraphs.
         if subgraph.has_edges_between(u_id, v_id):
             link_id = subgraph.edge_ids(u_id, v_id, return_uv=True)[2]
             subgraph.remove_edges(link_id)
@@ -255,7 +250,7 @@ class CollabDataModule(pl.LightningDataModule):
             link_id = subgraph.edge_ids(v_id, u_id, return_uv=True)[2]
             subgraph.remove_edges(link_id)
 
-        subgraph.ndata["z"] = double_radius_node_labeling(subgraph, u_id, v_id)
+        subgraph.ndata["label"] = double_radius_node_labeling(subgraph, u_id, v_id)
         return subgraph
 
     @staticmethod

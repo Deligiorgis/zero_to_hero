@@ -1,12 +1,13 @@
 """
 Deep Learning Models that can be re-used in different use-cases
 """
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import dgl
 import torch
 from dgl.nn.pytorch import GraphConv, SortPooling
 from torch import nn
+from torch.nn import functional as F
 
 
 class MLP(nn.Module):
@@ -18,7 +19,6 @@ class MLP(nn.Module):
         super().__init__()
 
         linear_layers = []
-
         for enum, (out_features, dropout) in enumerate(zip(list_out_features, list_linear_dropout)):
             linear_layers.extend(
                 [
@@ -49,34 +49,72 @@ class CNN(nn.Module):
     Implementation of Convolutional Neural Network Model
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments  # Need all parameters for the model
         self,
         in_channels: int,
         list_out_channels: List[int],
-        list_kernel_size: List[Union[int, Tuple[int, int]]],
+        list_kernel_size: List[Union[int, Tuple]],
         list_cnn_dropout: List[float],
+        dim: int = 2,
+        activation_as_last_layer: bool = False,
     ) -> None:
         super().__init__()
 
         cnn_layers = []
-
         for enum, (out_channels, kernel_size, dropout) in enumerate(
             zip(list_out_channels, list_kernel_size, list_cnn_dropout)
         ):
+            conv_kwargs = {
+                "dim": dim,
+                "enum": enum,
+                "in_channels": in_channels,
+                "out_channels": out_channels,
+                "list_out_channels": list_out_channels,
+                f"kernel_size_{dim}d": kernel_size,
+            }
             cnn_layers.extend(
                 [
-                    nn.Conv2d(
-                        in_channels=in_channels if enum == 0 else list_out_channels[enum - 1],
-                        out_channels=out_channels,
-                        kernel_size=kernel_size,
-                    ),
-                    nn.BatchNorm2d(num_features=out_channels),
+                    self._get_conv_layer(conv_kwargs=conv_kwargs),
+                    self._get_batch_norm_layer(dim=dim, out_channels=out_channels),
                     nn.ReLU(),
                     nn.Dropout(p=dropout),
                 ]
             )
-        cnn_layers = cnn_layers[:-3]  # remove last BatchNorm1d, ReLU and Dropout
+        cnn_layers = cnn_layers[:-3]  # remove last BatchNorm1d/2d, ReLU and Dropout
+        if activation_as_last_layer:
+            cnn_layers.append(nn.ReLU())
         self.cnn_layers = nn.Sequential(*cnn_layers)
+
+    @staticmethod
+    def _get_conv_layer(conv_kwargs: Dict) -> Union[nn.Conv1d, nn.Conv2d]:
+        dim = conv_kwargs["dim"]
+        if dim == 1:
+            kernel_size_1d = conv_kwargs["kernel_size_1d"]
+            return nn.Conv1d(
+                in_channels=conv_kwargs["in_channels"]
+                if conv_kwargs["enum"] == 0
+                else conv_kwargs["list_out_channels"][conv_kwargs["enum"] - 1],
+                out_channels=conv_kwargs["out_channels"],
+                kernel_size=kernel_size_1d,
+            )
+        if dim == 2:
+            kernel_size_2d = conv_kwargs["kernel_size_2d"]
+            return nn.Conv2d(
+                in_channels=conv_kwargs["in_channels"]
+                if conv_kwargs["enum"] == 0
+                else conv_kwargs["list_out_channels"][conv_kwargs["enum"] - 1],
+                out_channels=conv_kwargs["out_channels"],
+                kernel_size=kernel_size_2d,
+            )
+        raise NotImplementedError("Conv has been implemented only for 1D and 2D.")
+
+    @staticmethod
+    def _get_batch_norm_layer(dim: int, out_channels: int) -> Union[nn.BatchNorm1d, nn.BatchNorm2d]:
+        if dim == 1:
+            return nn.BatchNorm1d(num_features=out_channels)
+        if dim == 2:
+            return nn.BatchNorm2d(num_features=out_channels)
+        raise NotImplementedError("BatchNorm has been implemented only for 1D and 2D.")
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
         """
@@ -84,6 +122,67 @@ class CNN(nn.Module):
         :return: torch.Tensor
         """
         return self.cnn_layers(data)
+
+
+class GraphEncoder(nn.Module):
+    """
+    Graph Encoder using GCN layers
+    """
+
+    def __init__(
+        self,
+        in_features: int,
+        list_out_features: List[int],
+        list_dropout: Optional[List[float]] = None,
+    ) -> None:
+        super().__init__()
+
+        self.gcn_layers = nn.ModuleList()
+        for enum, out_features in enumerate(list_out_features):
+            self.gcn_layers.append(
+                GraphConv(
+                    in_feats=list_out_features[enum - 1] if enum > 0 else in_features,
+                    out_feats=out_features,
+                    norm="both",
+                    weight=True,
+                    allow_zero_in_degree=False,
+                )
+            )
+
+            if list_dropout is not None:
+                self.gcn_layers.append(nn.Dropout(p=list_dropout[enum]))
+
+        if list_dropout is not None:
+            self.gcn_layers = self.gcn_layers[:-1]
+
+    def forward(self, graph: dgl.DGLHeteroGraph, node_feats: torch.Tensor, edge_weight: torch.Tensor) -> torch.Tensor:
+        """
+
+        Parameters
+        ----------
+        graph
+        node_feats
+        edge_id
+
+        Returns
+        -------
+
+        """
+        list_node_feats = [node_feats]
+        for layer in self.gcn_layers:
+            if isinstance(layer, GraphConv):
+                list_node_feats += [
+                    torch.tanh(
+                        layer(
+                            graph=graph,
+                            feat=list_node_feats[-1],
+                            edge_weight=edge_weight,
+                        )
+                    )
+                ]
+            else:
+                list_node_feats[-1] = layer(list_node_feats[-1])
+        return torch.cat(list_node_feats[1:], dim=-1)
 
 
 class DGCNN(nn.Module):
@@ -119,43 +218,51 @@ class DGCNN(nn.Module):
         self.edge_weights_lookup = nn.Embedding.from_pretrained(edata)
         self.edge_weights_lookup.weight.requires_grad = False
 
-        self.node_embedding = nn.Embedding(ndata.shape[0] + config["max_z"], config["hidden_units"])
-
-        initial_dim = self.node_attributes_lookup.embedding_dim + self.node_embedding.embedding_dim * 2
-
-        self.gcn_layers = nn.ModuleList()
-        self.gcn_layers.append(GraphConv(initial_dim, config["hidden_units"]))
-        for _ in range(config["num_layers"] - 1):
-            self.gcn_layers.append(GraphConv(config["hidden_units"], config["hidden_units"]))
-        self.gcn_layers.append(GraphConv(config["hidden_units"], 1))
-
-        self.pooling = SortPooling(k=config["k"])
-
-        conv1d_channels = [16, 32]
-        total_latent_dim = config["hidden_units"] * config["num_layers"] + 1
-        conv1d_kws = [total_latent_dim, 5]
-        dense_dim = int((config["k"] - 2) / 2 + 1)
-        dense_dim = (dense_dim - conv1d_kws[1] + 1) * conv1d_channels[1]
-
-        self.cnn = nn.Sequential(
-            nn.Conv1d(1, conv1d_channels[0], conv1d_kws[0], conv1d_kws[0]),
-            nn.ReLU(),
-            nn.MaxPool1d(2, 2),
-            nn.Conv1d(conv1d_channels[0], conv1d_channels[1], conv1d_kws[1], 1),
-            nn.ReLU(),
+        self.node_embedding = nn.Embedding(
+            num_embeddings=ndata.shape[0] + config["model"]["max_z"],
+            embedding_dim=config["model"]["embedding_dim"],
         )
 
-        self.mlp = nn.Sequential(
-            nn.Linear(dense_dim, 128),
-            nn.ReLU(),
-            nn.Dropout(p=config["dropout"]),
-            nn.Linear(128, 1),
+        assert (
+            len(set(config["model"]["graph_conv"]["out_feats"][:-1]))
+            == len(set(config["model"]["graph_conv"]["dropout"][:-1]))
+            == 1
+        )
+
+        initial_dim = self.node_attributes_lookup.embedding_dim + self.node_embedding.embedding_dim * 2
+        self.gnn = GraphEncoder(
+            in_features=initial_dim,
+            list_out_features=config["model"]["graph_conv"]["out_feats"],
+            list_dropout=config["model"]["graph_conv"]["dropout"],
+        )
+
+        self.pooling = SortPooling(k=config["model"]["sort_pooling"]["k"])
+
+        config["model"]["convolutional"]["kernel_size"][0] = (
+            len(config["model"]["graph_conv"]["out_feats"]) * config["model"]["graph_conv"]["out_feats"][0] + 1
+        )
+        self.cnn = CNN(
+            in_channels=1,
+            list_out_channels=config["model"]["convolutional"]["out_channels"],
+            list_kernel_size=config["model"]["convolutional"]["kernel_size"],
+            list_cnn_dropout=config["model"]["convolutional"]["cnn_dropout"],
+            dim=1,
+        )
+
+        mlp_in_dim = sum(config["model"]["graph_conv"]["out_feats"]) * config["model"]["sort_pooling"]["k"]
+        for kernel_stride in config["model"]["convolutional"]["kernel_size"]:
+            mlp_in_dim -= kernel_stride - 1
+        mlp_in_dim *= config["model"]["convolutional"]["out_channels"][-1]
+        self.mlp = MLP(
+            in_features=mlp_in_dim,
+            list_out_features=config["model"]["linear"]["out_features"],
+            list_linear_dropout=config["model"]["linear"]["dropout"],
         )
 
     def forward(
         self,
         graph: dgl.DGLHeteroGraph,
-        feats: torch.Tensor,
+        node_labels: torch.Tensor,
         node_id: torch.Tensor,
         edge_id: torch.Tensor,
     ) -> torch.Tensor:
@@ -170,26 +277,21 @@ class DGCNN(nn.Module):
         node_feats = torch.cat(
             [
                 self.node_attributes_lookup(node_id),
-                self.node_embedding(feats),
-                self.node_embedding(self.node_attributes_lookup.num_embeddings + node_id),
+                self.node_embedding(node_id),
+                self.node_embedding(self.node_attributes_lookup.num_embeddings + node_labels),
             ],
             1,
         )
 
-        list_node_feats = [node_feats]
-        for layer in self.gcn_layers:
-            list_node_feats += [
-                torch.tanh(
-                    layer(
-                        graph=graph,
-                        feat=list_node_feats[-1],
-                        edge_weight=self.edge_weights_lookup(edge_id),
-                    )
-                )
-            ]
+        # GNN
+        node_feats = self.gnn(
+            graph=graph,
+            node_feats=node_feats,
+            edge_weight=self.edge_weights_lookup(edge_id),
+        )
 
-        node_feats = torch.cat(list_node_feats[1:], dim=-1)
-        del list_node_feats  # for memory efficiency
+        # ReLU
+        node_feats = F.relu(node_feats)
 
         # SortPooling
         node_feats = self.pooling(graph, node_feats)
