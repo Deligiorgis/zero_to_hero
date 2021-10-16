@@ -9,7 +9,6 @@ import pytorch_lightning as pl
 import torch
 from matplotlib import cm
 from pytorch_lightning.utilities.types import EPOCH_OUTPUT, STEP_OUTPUT
-from torch import nn
 
 from zero_to_hero.logging import get_data_from_outputs
 from zero_to_hero.metrics import compute_metrics
@@ -27,14 +26,14 @@ class BlobsClassifierModel(pl.LightningModule):  # pylint: disable=too-many-ance
 
         self.config = config
 
-        self.criterion = nn.CrossEntropyLoss(reduction="none")
+        self.criterion = torch.nn.CrossEntropyLoss(reduction="none")
 
         self.mlp = MLP(
             in_features=self.config["data"]["in_features"],
             list_out_features=self.config["model"]["out_features"],
             list_linear_dropout=self.config["model"]["dropout"],
         )
-        self.softmax = nn.Softmax(dim=1)
+        self.softmax = torch.nn.Softmax(dim=1)
 
         self.example_input_array = torch.rand(10, self.config["data"]["in_features"])
 

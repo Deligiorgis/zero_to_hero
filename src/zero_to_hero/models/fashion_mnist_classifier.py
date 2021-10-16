@@ -8,7 +8,6 @@ from typing import Dict, Optional, Tuple
 import pytorch_lightning as pl
 import torch
 from pytorch_lightning.utilities.types import EPOCH_OUTPUT, STEP_OUTPUT
-from torch import nn
 
 from zero_to_hero.logging import get_data_from_outputs
 from zero_to_hero.metrics import compute_metrics
@@ -26,7 +25,7 @@ class FashionMNISTClassifier(pl.LightningModule):  # pylint: disable=too-many-an
 
         self.configs = configs
 
-        self.criterion = nn.CrossEntropyLoss(reduction="none")
+        self.criterion = torch.nn.CrossEntropyLoss(reduction="none")
 
         self.embeds = torch.empty(1)
 
@@ -39,7 +38,7 @@ class FashionMNISTClassifier(pl.LightningModule):  # pylint: disable=too-many-an
             activation_as_last_layer=False,
         )
 
-        self.pooling_layer = nn.MaxPool2d(kernel_size=self.configs["model"]["pooling"]["kernel_size"])
+        self.pooling_layer = torch.nn.MaxPool2d(kernel_size=self.configs["model"]["pooling"]["kernel_size"])
 
         self.example_input_array = torch.rand(10, 1, 28, 28)
         in_features = reduce(operator.mul, self.pooling_layer(self.cnn_layers(self.example_input_array)).shape[1:], 1)
