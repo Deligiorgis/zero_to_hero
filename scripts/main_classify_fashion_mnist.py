@@ -5,12 +5,13 @@ import warnings
 from pathlib import Path
 
 import pytorch_lightning as pl
-import torch
 from pl_bolts.datamodules import FashionMNISTDataModule
 
 from zero_to_hero.config_reader import read_config
 from zero_to_hero.models.fashion_mnist_classifier import FashionMNISTClassifier
-from zero_to_hero.trainer.fashion_mnist_callbacks import get_fashion_mnist_callbacks
+from zero_to_hero.trainer.fashion_mnist_with_callbacks import (
+    get_fashion_mnist_trainer_with_callbacks,
+)
 
 warnings.filterwarnings("ignore")
 
@@ -40,20 +41,7 @@ def main() -> None:
     )
     model = FashionMNISTClassifier(configs=config)
 
-    (
-        logger,
-        early_stop_callback,
-        checkpoint_callback,
-    ) = get_fashion_mnist_callbacks(config=config)
-    trainer = pl.Trainer(
-        gpus=[0] if torch.cuda.is_available() else None,
-        max_epochs=config["hyper_parameters"]["epochs"],
-        logger=logger,
-        callbacks=[
-            early_stop_callback,
-            checkpoint_callback,
-        ],
-    )
+    trainer = get_fashion_mnist_trainer_with_callbacks(config=config)
 
     trainer.fit(
         model=model,

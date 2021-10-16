@@ -1,14 +1,16 @@
 """
-Callbacks used in Trainer for fashionMNIST
+Callbacks used in Trainer for Blobs
 """
-from abc import ABC
-from typing import Dict, List
 
+from typing import Dict
+
+import torch
+from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 
 
-def get_fashion_mnist_callbacks(config: Dict) -> List[ABC]:
+def get_blobs_trainer_with_callbacks(config: Dict) -> Trainer:
     """
 
     Parameters
@@ -21,8 +23,8 @@ def get_fashion_mnist_callbacks(config: Dict) -> List[ABC]:
     """
     logger = TensorBoardLogger(
         save_dir="tensorboard_logs",
-        name="fashionMNIST",
-        prefix="fashionMNIST",
+        name="blobs",
+        prefix=f"blobs--centers-{len(config['data']['centers'])}--dims-{config['data']['in_features']}",
         default_hp_metric=False,
         log_graph=True,
     )
@@ -39,11 +41,16 @@ def get_fashion_mnist_callbacks(config: Dict) -> List[ABC]:
         verbose=False,
         save_last=True,
         save_top_k=1,
-        filename="fashionMNIST-classification-{epoch:02d}-{validation_loss:.4f}",
+        filename="blobs-classification-{epoch:02d}-{validation_loss:.4f}",
     )
-    callbacks = [
-        logger,
-        early_stop_callback,
-        checkpoint_callback,
-    ]
-    return callbacks
+
+    trainer = Trainer(
+        gpus=[0] if torch.cuda.is_available() else None,
+        max_epochs=config["hyper_parameters"]["epochs"],
+        logger=logger,
+        callbacks=[
+            early_stop_callback,
+            checkpoint_callback,
+        ],
+    )
+    return trainer

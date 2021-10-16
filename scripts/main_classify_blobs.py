@@ -5,12 +5,11 @@ import warnings
 from pathlib import Path
 
 import pytorch_lightning as pl
-import torch.cuda
 
 from zero_to_hero.config_reader import read_config
 from zero_to_hero.data.blobs import BlobsDataModule
 from zero_to_hero.models.blobs_classifier import BlobsClassifierModel
-from zero_to_hero.trainer.blobs_callbacks import get_blobs_callbacks
+from zero_to_hero.trainer.blobs_with_callbacks import get_blobs_trainer_with_callbacks
 
 warnings.filterwarnings("ignore")
 
@@ -30,20 +29,7 @@ def main() -> None:
     datamodule = BlobsDataModule(config=config)
     model = BlobsClassifierModel(config=config)
 
-    (
-        logger,
-        early_stop_callback,
-        checkpoint_callback,
-    ) = get_blobs_callbacks(config=config)
-    trainer = pl.Trainer(
-        gpus=[0] if torch.cuda.is_available() else None,
-        max_epochs=config["hyper_parameters"]["epochs"],
-        logger=logger,
-        callbacks=[
-            early_stop_callback,
-            checkpoint_callback,
-        ],
-    )
+    trainer = get_blobs_trainer_with_callbacks(config=config)
 
     trainer.fit(
         model=model,

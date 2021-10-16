@@ -1,14 +1,15 @@
 """
 Callbacks used in Trainer for Collab
 """
-from abc import ABC
-from typing import Dict, List
+from typing import Dict
 
+import torch
+from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 
 
-def get_collab_callbacks(config: Dict) -> List[ABC]:
+def get_collab_trainer_with_callbacks(config: Dict) -> Trainer:
     """
 
     Parameters
@@ -50,10 +51,17 @@ def get_collab_callbacks(config: Dict) -> List[ABC]:
         filename="collab-link-prediction-{epoch:02d}-{validation_loss:.4f}",
     )
 
-    callbacks = [
-        logger,
-        early_stop_callback,
-        loss_checkpoint_callback,
-        hits_checkpoint_callback,
-    ]
-    return callbacks
+    trainer = Trainer(
+        gpus=[0] if torch.cuda.is_available() else None,
+        max_epochs=config["hyper_parameters"]["epochs"],
+        logger=logger,
+        callbacks=[
+            early_stop_callback,
+            loss_checkpoint_callback,
+            hits_checkpoint_callback,
+        ],
+        limit_train_batches=100,
+        limit_val_batches=100,
+        limit_test_batches=100,
+    )
+    return trainer
