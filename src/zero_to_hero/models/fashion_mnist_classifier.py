@@ -119,18 +119,12 @@ class FashionMNISTClassifier(pl.LightningModule):  # pylint: disable=too-many-an
                     outputs=outputs,
                 )
 
-                tensorboard = self.logger.experiment
-                tensorboard.add_pr_curve(
-                    tag="valid-fashion-mnist-pr-curve",
-                    labels=dict_data["targets"].cpu().squeeze(),
-                    predictions=dict_data["predictions"].cpu().squeeze(),
-                    global_step=self.trainer.current_epoch,
-                )
-
                 val_indices = self.trainer.datamodule.val_dataloader().dataset.indices
                 val_dataset = self.trainer.datamodule.val_dataloader().dataset.dataset
                 class_to_idx = {v: k for k, v in val_dataset.class_to_idx.items()}
                 metadata = list(map(lambda target: class_to_idx[target.item()], dict_data["targets"].cpu()))
+
+                tensorboard = self.logger.experiment
                 tensorboard.add_embedding(
                     tag="valid-fashion-mnist-embedding-space",
                     mat=dict_data["embeds"].cpu().view(dict_data["embeds"].shape[0], -1),
@@ -159,12 +153,6 @@ class FashionMNISTClassifier(pl.LightningModule):  # pylint: disable=too-many-an
         )
 
         tensorboard = self.logger.experiment
-        tensorboard.add_pr_curve(
-            tag="test-fashion-mnist-pr-curve",
-            labels=dict_data["targets"].cpu().squeeze(),
-            predictions=dict_data["predictions"].cpu().squeeze(),
-        )
-
         if self.trainer is not None:
             test_dataset = self.trainer.datamodule.test_dataloader().dataset
             class_to_idx = {v: k for k, v in test_dataset.class_to_idx.items()}
