@@ -7,7 +7,6 @@ import dgl
 import torch
 from dgl.nn.pytorch import GraphConv, SortPooling
 from torch import nn
-from torch.nn import functional as F
 
 
 class MLP(nn.Module):
@@ -187,21 +186,7 @@ class GraphEncoder(nn.Module):
 
 class DGCNN(nn.Module):
     """
-    An end-to-end deep learning architecture for graph classification.
-    paper link: https://muhanzhang.github.io/papers/AAAI_2018_DGCNN.pdf
-    Attributes:
-        num_layers(int): num of gcn layers
-        hidden_units(int): num of hidden units
-        k(int, optional): The number of nodes to hold for each graph in SortPooling.
-        gcn_type(str): type of gcn layer, 'gcn' for GraphConv and 'sage' for SAGEConv
-        node_attributes(Tensor, optional): node attribute
-        edge_weights(Tensor, optional): edge weight
-        node_embedding(Tensor, optional): pre-trained node embedding
-        use_embedding(bool, optional): whether to use node embedding. Note that if 'use_embedding' is set True
-                             and 'node_embedding' is None, will automatically randomly initialize node embedding.
-        num_nodes(int, optional): num of nodes
-        dropout(float, optional): dropout rate
-        max_z(int, optional): default max vocab size of node labeling, default 1000.
+    Deep Graph Convolutional Neural Network implementation
     """
 
     def __init__(
@@ -226,9 +211,9 @@ class DGCNN(nn.Module):
             == 1
         )
 
-        initial_dim = self.node_attributes.shape[1] + self.node_embedding.embedding_dim * 2
+        gnn_in_features = self.node_attributes.shape[1] + self.node_embedding.embedding_dim * 2
         self.gnn = GraphEncoder(
-            in_features=initial_dim,
+            in_features=gnn_in_features,
             list_out_features=config["model"]["graph_conv"]["out_feats"],
             list_dropout=config["model"]["graph_conv"]["dropout"],
         )
@@ -246,12 +231,12 @@ class DGCNN(nn.Module):
             dim=1,
         )
 
-        mlp_in_dim = sum(config["model"]["graph_conv"]["out_feats"]) * config["model"]["sort_pooling"]["k"]
+        mlp_in_features = sum(config["model"]["graph_conv"]["out_feats"]) * config["model"]["sort_pooling"]["k"]
         for kernel_stride in config["model"]["convolutional"]["kernel_size"]:
-            mlp_in_dim -= kernel_stride - 1
-        mlp_in_dim *= config["model"]["convolutional"]["out_channels"][-1]
+            mlp_in_features -= kernel_stride - 1
+        mlp_in_features *= config["model"]["convolutional"]["out_channels"][-1]
         self.mlp = MLP(
-            in_features=mlp_in_dim,
+            in_features=mlp_in_features,
             list_out_features=config["model"]["linear"]["out_features"],
             list_linear_dropout=config["model"]["linear"]["dropout"],
         )
@@ -289,7 +274,7 @@ class DGCNN(nn.Module):
         )
 
         # ReLU
-        node_feats = F.relu(node_feats)
+        node_feats = torch.relu(node_feats)
 
         # SortPooling
         node_feats = self.pooling(graph, node_feats)
