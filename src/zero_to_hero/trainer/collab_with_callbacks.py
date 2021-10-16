@@ -60,8 +60,5 @@ def get_collab_trainer_with_callbacks(config: Dict) -> Trainer:
             loss_checkpoint_callback,
             hits_checkpoint_callback,
         ],
-        limit_train_batches=100,
-        limit_val_batches=100,
-        limit_test_batches=100,
     )
     return trainer
