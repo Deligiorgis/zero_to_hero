@@ -112,20 +112,13 @@ class BlobsClassifierModel(pl.LightningModule):  # pylint: disable=too-many-ance
         if self.trainer is not None:
             self.log("step", self.trainer.current_epoch)
             assert isinstance(outputs[0], dict)
-            if self.trainer.current_epoch % 15 == 0 and self.trainer.current_epoch < 100:
+            if self.trainer.current_epoch % 15 == 0 and self.trainer.current_epoch <= 240:
                 dict_data = get_data_from_outputs(
                     keys=["data", "targets", "predictions"],
                     outputs=outputs,
                 )
 
                 tensorboard = self.logger.experiment
-                tensorboard.add_pr_curve(
-                    tag="train-blobs-pr-curve",
-                    labels=dict_data["targets"].cpu().squeeze(),
-                    predictions=dict_data["predictions"].cpu().squeeze(),
-                    global_step=self.trainer.current_epoch,
-                )
-
                 if outputs[0]["data"].shape[1] == 2:
                     fig = self.get_figure(dict_data["data"], dict_data["targets"])
                     tensorboard.add_figure(tag="train", figure=fig, global_step=self.trainer.current_epoch)
@@ -150,20 +143,13 @@ class BlobsClassifierModel(pl.LightningModule):  # pylint: disable=too-many-ance
         if self.trainer is not None:
             self.log("step", self.trainer.current_epoch)
             assert isinstance(outputs[0], dict)
-            if self.trainer.current_epoch % 15 == 0 and self.trainer.current_epoch < 100:
+            if self.trainer.current_epoch % 15 == 0 and self.trainer.current_epoch <= 240:
                 dict_data = get_data_from_outputs(
                     keys=["data", "targets", "predictions"],
                     outputs=outputs,
                 )
 
                 tensorboard = self.logger.experiment
-                tensorboard.add_pr_curve(
-                    tag="valid-blobs-pr-curve",
-                    labels=dict_data["targets"].cpu().squeeze(),
-                    predictions=dict_data["predictions"].cpu().squeeze(),
-                    global_step=self.trainer.current_epoch,
-                )
-
                 if outputs[0]["data"].shape[1] == 2:
                     fig = self.get_figure(dict_data["data"], dict_data["targets"])
                     tensorboard.add_figure(tag="valid", figure=fig, global_step=self.trainer.current_epoch)
@@ -189,13 +175,6 @@ class BlobsClassifierModel(pl.LightningModule):  # pylint: disable=too-many-ance
             )
 
             tensorboard = self.logger.experiment
-            tensorboard.add_pr_curve(
-                tag="test-blobs-pr-curve",
-                labels=dict_data["targets"].cpu().squeeze(),
-                predictions=dict_data["predictions"].cpu().squeeze(),
-                global_step=self.trainer.current_epoch,
-            )
-
             tensorboard.add_embedding(
                 tag="test-blobs-embedding-space",
                 mat=dict_data["data"].cpu(),
