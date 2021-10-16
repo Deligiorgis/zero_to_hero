@@ -212,11 +212,8 @@ class DGCNN(nn.Module):
     ):
         super().__init__()
 
-        self.node_attributes_lookup = nn.Embedding.from_pretrained(ndata)
-        self.node_attributes_lookup.weight.requires_grad = False
-
-        self.edge_weights_lookup = nn.Embedding.from_pretrained(edata)
-        self.edge_weights_lookup.weight.requires_grad = False
+        self.node_attributes = ndata
+        self.edge_weights = edata
 
         self.node_embedding = nn.Embedding(
             num_embeddings=ndata.shape[0] + config["model"]["max_z"],
@@ -229,7 +226,7 @@ class DGCNN(nn.Module):
             == 1
         )
 
-        initial_dim = self.node_attributes_lookup.embedding_dim + self.node_embedding.embedding_dim * 2
+        initial_dim = self.node_attributes.shape[1] + self.node_embedding.embedding_dim * 2
         self.gnn = GraphEncoder(
             in_features=initial_dim,
             list_out_features=config["model"]["graph_conv"]["out_feats"],
@@ -274,11 +271,12 @@ class DGCNN(nn.Module):
          3. CNN
          4. MLP
         """
+        device = graph.device
         node_feats = torch.cat(
             [
-                self.node_attributes_lookup(node_id),
+                self.node_attributes[node_id].to(device),
                 self.node_embedding(node_id),
-                self.node_embedding(self.node_attributes_lookup.num_embeddings + node_labels),
+                self.node_embedding(self.node_attributes.shape[0] + node_labels),
             ],
             1,
         )
@@ -287,7 +285,7 @@ class DGCNN(nn.Module):
         node_feats = self.gnn(
             graph=graph,
             node_feats=node_feats,
-            edge_weight=self.edge_weights_lookup(edge_id),
+            edge_weight=self.edge_weights[edge_id].to(device),
         )
 
         # ReLU
