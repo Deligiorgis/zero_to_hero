@@ -1,42 +1,44 @@
 # Zero To Hero Tutorial on a Deep Learning Classification Task
 
-This repository tries to introduce the different stages
-that someone needs to follow for classifying data based on their complexity.
+This repository tries to introduce the different stages that someone needs to follow for classifying data based on their
+complexity.
 
 ## Description
 
-In Deep Learning it is required multiple times to distinguish data between them.
-The task that tackles this challenge is the classification task.
-In this repository we are going to present how we can classify
-the following datasets with deep learning models:
+In Deep Learning it is required multiple times to distinguish data between them. The task that tackles this challenge is
+the classification task. In this repository we are going to present how we can classify the following datasets with deep
+learning models:
 
 Datasets:
+
 1. [Gaussian-blobs]
 2. fashion items ([fashionMNIST])
 3. relations among authors ([ogb-collab])
 
 Models:
+
 1. MultiLayer-Perceptron (MLP)
 2. Convolutional Neural Networks (CNNs)
 3. Graph Convolutional Networks (GCNs)
 
-We can combine the aforementioned models to build different architectures which
-will help us to solve the classification task for each dataset.
+We can combine the aforementioned models to build different architectures which will help us to solve the classification
+task for each dataset.
 
 The implementations of the different stages are based on the following frameworks:
- - [PyTorch]
- - [PyTorch-Lightning]
- - [Lightning-Bolts]
- - [DGL] (Deep Graph Library)
- - [OGB] (Open Graph Benchmark)
+
+- [PyTorch]
+- [PyTorch-Lightning]
+- [Lightning-Bolts]
+- [DGL] (Deep Graph Library)
+- [OGB] (Open Graph Benchmark)
 
 ## Installation
 
 In order to set up the necessary virtual environment:
 
-1. review and uncomment / comment based on GPU availability and CUDA version
-of your machine what you need in `requirements.txt`
-and create a virtual environment `.venv`:
+1. review and uncomment / comment based on GPU availability and CUDA version of your machine what you need
+   in `requirements.txt`
+   and create a virtual environment `.venv`:
    ```bash
    python3 -m venv .venv
    ```
@@ -59,6 +61,7 @@ and create a virtual environment `.venv`:
    ```bash
    pip install -e .
    ```
+
 > **_NOTE:_**  The virtual environment will have `zero_to_hero` installed in editable mode.
 > Some changes, e.g. in `setup.cfg`, might require you to run `pip install -e .` again.
 
@@ -69,8 +72,8 @@ Optional and needed only once after `git clone https://github.com/Deligiorgis/ze
    pre-commit install
    # You might also want to run `pre-commit autoupdate`
    ```
-   and checkout the configuration under `.pre-commit-config.yaml`.
-   The `-n, --no-verify` flag of `git commit` can be used to deactivate pre-commit hooks temporarily.
+   and checkout the configuration under `.pre-commit-config.yaml`. The `-n, --no-verify` flag of `git commit` can be
+   used to deactivate pre-commit hooks temporarily.
 
 ## Project Organization
 
@@ -80,7 +83,7 @@ Optional and needed only once after `git clone https://github.com/Deligiorgis/ze
 ├── LICENSE.txt             <- License as chosen on the command-line.
 ├── README.md               <- The top-level README for developers.
 ├── configs                 <- Directory for configurations of model & application.
-├── data
+├── data                    <- The contents have been ignored
 │   ├── FashionMNIST        <- FashionMNIST data will be downloaded by default here.
 │   ├── ogbl_collab         <- OGBL-Collab data will be downloaded by default here.
 ├── docs                    <- Directory for Sphinx documentation in rst or md.
@@ -103,10 +106,46 @@ Optional and needed only once after `git clone https://github.com/Deligiorgis/ze
 └── .pre-commit-config.yaml <- Configuration of pre-commit git hooks.
 ```
 
-## How to run:
+## How to run the classification task for:
 
-To monitor the progress of the model's training you can use
-TensorBoard by running the following command:
+Assuming that you are using the aforementioned generated virtual environment.
+
+### Gaussian Blobs
+
+To run the script that classifies the Gaussian Blobs first you'll need to choose how many dimensions you want for the
+blobs and which architecture to use
+(further information or examples can be found in
+`configs/blobs.yml`). Then run the following command:
+
+```bash
+python scripts/main_classify_blobs.py
+```
+
+### Fashion-MNIST
+
+To run the script that classifies the FashionMNIST dataset first you'll need to choose which architecture to use
+(further information or examples can be found in
+`configs/fashion_mnist.yml`). Then run the following command:
+
+```bash
+python scripts/main_classify_fashion_mnist.py
+```
+
+### OGBL-Collab
+
+To run the script that predicts the links (co-authors)
+first you'll need to choose which architecture to use
+(further information or examples can be found in
+`configs/collab.yml`). Then run the following command:
+
+```bash
+python scripts/main_link_prediction_collab.py
+```
+
+### Tensorboard
+
+To monitor the progress of the model's training you can use TensorBoard by running the following command:
+
 ```bash
 tensorboard --logdir=tensorboard_logs
 ```
@@ -133,21 +172,39 @@ GitHub:
 This project has been set up using [PyScaffold] 4.0.2 and the [dsproject extension] 0.6.1.
 
 [pre-commit]: https://pre-commit.com/
+
 [Jupyter]: https://jupyter.org/
+
 [nbstripout]: https://github.com/kynan/nbstripout
+
 [Google style]: http://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings
+
 [PyScaffold]: https://pyscaffold.org/
+
 [dsproject extension]: https://github.com/pyscaffold/pyscaffoldext-dsproject
+
 [fashionMNIST]: https://github.com/zalandoresearch/fashion-mnist
+
 [ogb-collab]: https://ogb.stanford.edu/docs/linkprop/#ogbl-collab
+
 [Gaussian-blobs]: https://scikit-learn.org/stable/modules/generated/sklearn.datasets.make_blobs.html
+
 [PyTorch]: https://pytorch.org/
+
 [OGB]: https://ogb.stanford.edu/
+
 [DGL]: https://www.dgl.ai/
+
 [DGL-installation]: https://www.dgl.ai/pages/start.html
+
 [PyTorch-installation]: https://pytorch.org/
+
 [PyTorch-Lightning]: https://www.pytorchlightning.ai/
+
 [Lightning-Bolts]: https://lightning-bolts.readthedocs.io/en/latest/
+
 [Link Prediction Based on Graph Neural Networks]: https://arxiv.org/abs/1802.09691
+
 [Revisiting Graph Neural Networks for Link Prediction]: https://arxiv.org/abs/2010.16103
+
 [An End-to-End Deep Learning Architecture for Graph Classification]: https://www.aaai.org/ocs/index.php/AAAI/AAAI18/paper/viewPaper/17146
