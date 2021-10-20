@@ -142,15 +142,17 @@ class CollabDataModule(pl.LightningDataModule):
         for key, values in multi_graph.edata.items():
             multi_graph.edata[key] = values.float()
 
-        test_graph = dgl.add_edges(
-            g=multi_graph,
-            u=split_edge["valid"]["edge"][:, 0],
-            v=split_edge["valid"]["edge"][:, 1],
-            data={
-                "weight": split_edge["valid"]["weight"].unsqueeze(1).float(),
-                "year": split_edge["valid"]["year"].unsqueeze(1).float(),
-            },
-        )
+        test_graph = deepcopy(multi_graph)
+        if self.config["data"]["test_graph_with_valid_edges"]:
+            test_graph = dgl.add_edges(
+                g=multi_graph,
+                u=split_edge["valid"]["edge"][:, 0],
+                v=split_edge["valid"]["edge"][:, 1],
+                data={
+                    "weight": split_edge["valid"]["weight"].unsqueeze(1).float(),
+                    "year": split_edge["valid"]["year"].unsqueeze(1).float(),
+                },
+            )
 
         simple_graph = dgl.to_simple(
             g=multi_graph,
@@ -177,9 +179,6 @@ class CollabDataModule(pl.LightningDataModule):
 
         self.edata = simple_graph.edata["weight"].float()
         self.test_edata = test_simple_graph.edata["weight"].float()
-        if self.config["data"]["normalize_weights"]:
-            self.edata /= self.edata.max()
-            self.test_edata /= self.edata.max()
 
         simple_graph.ndata.clear()
         simple_graph.edata.clear()
@@ -223,8 +222,9 @@ class CollabDataModule(pl.LightningDataModule):
 
         if stage in ("test", None):
             path = (
-                Path("data/ogbl_collab_seal")
-                / f"test_{self.config['data']['hop']}-hop_1_with_valid_edges_subsample.bin"
+                Path("data/ogbl_collab_seal") / f"test_{self.config['data']['hop']}-hop_"
+                f"{'with' if self.config['data']['test_graph_with_valid_edges'] else 'without'}-valid-edges_"
+                "1-subsample.bin"
             )
             if not path.exists():
                 edges, links = self.generate_edges_and_links(
