@@ -89,12 +89,7 @@ Optional and needed only once after `git clone https://github.com/Deligiorgis/ze
 │   ├── FashionMNIST        <- FashionMNIST data will be downloaded by default here.
 │   ├── ogbl_collab         <- OGBL-Collab data will be downloaded by default here.
 ├── docs                    <- Directory for Sphinx documentation in rst or md.
-├── models                  <- Trained and serialized models, model predictions,
-│                              or model summaries.
 ├── pyproject.toml          <- Build system configuration. Do not change!
-├── references              <- Data dictionaries, manuals, and all other materials.
-├── reports                 <- Generated analysis as HTML, PDF, LaTeX, etc.
-│   └── figures             <- Generated plots and figures for reports.
 ├── scripts                 <- Analysis and production scripts which import the
 │                              actual Python package, e.g. train_model.py.
 ├── setup.cfg               <- Declarative configuration of your project.
