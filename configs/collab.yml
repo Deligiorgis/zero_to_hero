@@ -1,7 +1,8 @@
 data:
   standardize_data: true
 
-  subsample_ratio: 0.1
+  subsample_train_ratio: 0.1
+  subsample_test_ratio: 1
   hop: 1
 
   sampler:
@@ -14,6 +15,7 @@ data:
   pin_memory: true
 
   test_graph_with_valid_edges: true
+  predict_graph_with_test_edges: true
 
 model:
   graph_conv:

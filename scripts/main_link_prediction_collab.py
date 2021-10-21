@@ -32,7 +32,7 @@ def main() -> None:
 
     model = LinkPredictorCollab(
         ndata=datamodule.ndata,
-        edata=datamodule.edata,
+        edata=datamodule.edata["fit"],
         config=config,
     )
 
@@ -55,7 +55,7 @@ def main() -> None:
         checkpoint_path=trainer.checkpoint_callback.best_model_path,
         map_location="cpu",
         ndata=datamodule.ndata,
-        edata=datamodule.test_edata,
+        edata=datamodule.edata["test"],
         config=config,
     )
     trainer.test(
@@ -64,6 +64,21 @@ def main() -> None:
         ckpt_path="best",
         verbose=True,
     )
+
+    model = LinkPredictorCollab.load_from_checkpoint(
+        checkpoint_path=trainer.checkpoint_callback.best_model_path,
+        map_location="cpu",
+        ndata=datamodule.ndata,
+        edata=datamodule.edata["predict"],
+        config=config,
+    )
+    predictions = trainer.predict(
+        model=model,
+        datamodule=datamodule,
+        ckpt_path="best",
+        return_predictions=True,
+    )
+    print(predictions)
 
 
 if __name__ == "__main__":

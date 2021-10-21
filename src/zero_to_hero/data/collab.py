@@ -115,13 +115,20 @@ class CollabDataModule(pl.LightningDataModule):
 
         self.config = config
 
-        self.train_dataset: Optional[GraphDataSet] = None
-        self.valid_dataset: Optional[GraphDataSet] = None
-        self.test_dataset: Optional[GraphDataSet] = None
+        self.dataset: Dict[str, Optional[GraphDataSet]] = {
+            "train": None,
+            "valid": None,
+            "test": None,
+            "predict": None,
+        }
 
-        self.ndata: torch.Tensor = torch.empty(1)
-        self.edata: torch.Tensor = torch.empty(1)
-        self.test_edata: torch.Tensor = torch.empty(1)
+        self.ndata: torch.Tensor = torch.empty(0)
+
+        self.edata: Dict[str, torch.Tensor] = {
+            "fit": torch.empty(0),
+            "test": torch.empty(0),
+            "predict": torch.empty(0),
+        }
 
     def prepare_data(self) -> None:
         DglLinkPropPredDataset(
@@ -134,18 +141,18 @@ class CollabDataModule(pl.LightningDataModule):
             name="ogbl-collab",
             root="data",
         )
-        multi_graph = dataset[0]
+        multi_graph: Dict[str, dgl.DGLHeteroGraph] = {"fit": dataset[0]}
         split_edge = dataset.get_edge_split()
 
-        multi_graph = dgl.add_self_loop(g=multi_graph)
+        multi_graph["fit"] = dgl.add_self_loop(g=multi_graph["fit"])
 
-        for key, values in multi_graph.edata.items():
-            multi_graph.edata[key] = values.float()
+        for key, values in multi_graph["fit"].edata.items():
+            multi_graph["fit"].edata[key] = values.float()
 
-        test_graph = deepcopy(multi_graph)
+        multi_graph["test"] = deepcopy(multi_graph["fit"])
         if self.config["data"]["test_graph_with_valid_edges"]:
-            test_graph = dgl.add_edges(
-                g=multi_graph,
+            multi_graph["test"] = dgl.add_edges(
+                g=multi_graph["fit"],
                 u=split_edge["valid"]["edge"][:, 0],
                 v=split_edge["valid"]["edge"][:, 1],
                 data={
@@ -154,20 +161,29 @@ class CollabDataModule(pl.LightningDataModule):
                 },
             )
 
-        simple_graph = dgl.to_simple(
-            g=multi_graph,
-            copy_ndata=True,
-            copy_edata=True,
-            aggregator="sum",
-        )
-        test_simple_graph = dgl.to_simple(
-            g=test_graph,
-            copy_ndata=True,
-            copy_edata=True,
-            aggregator="sum",
-        )
+        multi_graph["predict"] = deepcopy(multi_graph["test"])
+        if self.config["data"]["predict_graph_with_test_edges"]:
+            multi_graph["predict"] = dgl.add_edges(
+                g=multi_graph["test"],
+                u=split_edge["test"]["edge"][:, 0],
+                v=split_edge["test"]["edge"][:, 1],
+                data={
+                    "weight": split_edge["test"]["weight"].unsqueeze(1).float(),
+                    "year": split_edge["test"]["year"].unsqueeze(1).float(),
+                },
+            )
 
-        ndata = simple_graph.ndata["feat"]
+        simple_graph = {
+            phase: dgl.to_simple(
+                g=multi_graph[phase],
+                copy_ndata=True,
+                copy_edata=True,
+                aggregator="sum",
+            )
+            for phase in ["fit", "test", "predict"]
+        }
+
+        ndata = simple_graph["fit"].ndata["feat"]
         if self.config["data"]["standardize_data"]:
             ndata = torch.from_numpy(
                 standardize_data(
@@ -177,68 +193,95 @@ class CollabDataModule(pl.LightningDataModule):
             )
         self.ndata = ndata
 
-        self.edata = simple_graph.edata["weight"].float()
-        self.test_edata = test_simple_graph.edata["weight"].float()
+        self.edata = {phase: simple_graph[phase].edata["weight"].float() for phase in ["fit", "test", "predict"]}
 
-        simple_graph.ndata.clear()
-        simple_graph.edata.clear()
-
-        test_simple_graph.ndata.clear()
-        test_simple_graph.edata.clear()
+        for phase in ["fit", "test", "predict"]:
+            simple_graph[phase].ndata.clear()
+            simple_graph[phase].edata.clear()
 
         if stage in ("train", "fit", None):
+            # Train
             path = (
                 Path("data/ogbl_collab_seal")
-                / f"train_{self.config['data']['hop']}-hop_{self.config['data']['subsample_ratio']}-subsample.bin"
+                / f"train_{self.config['data']['hop']}-hop_{self.config['data']['subsample_train_ratio']}-subsample.bin"
             )
             if not path.exists():
                 edges, links = self.generate_edges_and_links(
                     split_edge=split_edge,
-                    graph=simple_graph,
+                    graph=simple_graph["fit"],
                     phase="train",
                 )
                 graph_list, links = self.generate_list_of_graphs_and_links(
                     edges=edges,
                     links=links,
-                    graph=simple_graph,
+                    graph=simple_graph["fit"],
                 )
                 dgl.save_graphs(str(path), graph_list, {"links": links})
-            self.train_dataset = GraphDataSet(path=path)
+            self.dataset["train"] = GraphDataSet(path=path)
 
-            path = Path("data/ogbl_collab_seal") / f"valid_{self.config['data']['hop']}-hop_1-subsample.bin"
+            # Valid
+            path = (
+                Path("data/ogbl_collab_seal") / f"valid_{self.config['data']['hop']}-hop_"
+                f"{self.config['data']['subsample_test_ratio']}-subsample.bin"
+            )
             if not path.exists():
                 edges, links = self.generate_edges_and_links(
                     split_edge=split_edge,
-                    graph=simple_graph,
+                    graph=simple_graph["fit"],
                     phase="valid",
                 )
                 graph_list, links = self.generate_list_of_graphs_and_links(
                     edges=edges,
                     links=links,
-                    graph=simple_graph,
+                    graph=simple_graph["fit"],
                 )
                 dgl.save_graphs(str(path), graph_list, {"links": links})
-            self.valid_dataset = GraphDataSet(path=path)
+            self.dataset["valid"] = GraphDataSet(path=path)
 
         if stage in ("test", None):
             path = (
                 Path("data/ogbl_collab_seal") / f"test_{self.config['data']['hop']}-hop_"
                 f"{'with' if self.config['data']['test_graph_with_valid_edges'] else 'without'}-valid-edges_"
-                "1-subsample.bin"
+                f"{self.config['data']['subsample_test_ratio']}-subsample.bin"
             )
             if not path.exists():
                 edges, links = self.generate_edges_and_links(
                     split_edge=split_edge,
-                    graph=test_simple_graph,
+                    graph=simple_graph["test"],
                     phase="test",
                 )
                 graph_list, links = self.generate_list_of_graphs_and_links(
                     edges=edges,
                     links=links,
-                    graph=test_simple_graph,
+                    graph=simple_graph["test"],
                 )
                 dgl.save_graphs(str(path), graph_list, {"links": links})
-            self.test_dataset = GraphDataSet(path=path)
+            self.dataset["test"] = GraphDataSet(path=path)
+
+        if stage in ("predict", None):
+            path = (
+                Path("data/ogbl_collab_seal") / f"predict_{self.config['data']['hop']}-hop_"
+                f"{'with' if self.config['data']['test_graph_with_valid_edges'] else 'without'}-valid-edges_"
+                f"{'with' if self.config['data']['predict_graph_with_test_edges'] else 'without'}-test-edges_"
+                f"{self.config['data']['subsample_test_ratio']}-subsample.bin"
+            )
+            split_edge["predict"] = {
+                "edge": torch.randperm(100).view(-1, 2).float(),  # Random collaborations
+                "edge_neg": torch.empty(0),
+            }
+            if not path.exists():
+                edges, links = self.generate_edges_and_links(
+                    split_edge=split_edge,
+                    graph=simple_graph["predict"],
+                    phase="predict",
+                )
+                graph_list, links = self.generate_list_of_graphs_and_links(
+                    edges=edges,
+                    links=links,
+                    graph=simple_graph["predict"],
+                )
+                dgl.save_graphs(str(path), graph_list, {"links": links})
+            self.dataset["predict"] = GraphDataSet(path=path)
 
     def sample_subgraph(self, target_nodes: torch.Tensor, graph: dgl.DGLHeteroGraph) -> dgl.DGLHeteroGraph:
         """
@@ -356,11 +399,15 @@ class CollabDataModule(pl.LightningDataModule):
 
         pos_edges = self.subsample_edges(
             edges=pos_edges,
-            subsample_ratio=self.config["data"]["subsample_ratio"] if phase == "train" else 1,
+            subsample_ratio=self.config["data"]["subsample_train_ratio"]
+            if phase == "train"
+            else self.config["data"]["subsample_test_ratio"],
         ).long()
         neg_edges = self.subsample_edges(
             edges=neg_edges,
-            subsample_ratio=self.config["data"]["subsample_ratio"] if phase == "train" else 1,
+            subsample_ratio=self.config["data"]["subsample_train_ratio"]
+            if phase == "train"
+            else self.config["data"]["subsample_test_ratio"],
         ).long()
 
         edges = torch.cat([pos_edges, neg_edges])
@@ -402,9 +449,9 @@ class CollabDataModule(pl.LightningDataModule):
         return edges, links
 
     def train_dataloader(self) -> TRAIN_DATALOADERS:
-        assert self.train_dataset is not None
+        assert self.dataset["train"] is not None
         return DataLoader(
-            dataset=self.train_dataset,
+            dataset=self.dataset["train"],
             batch_size=self.config["data"]["batch_size"],
             shuffle=True,
             num_workers=self.config["data"]["num_workers"],
@@ -414,9 +461,9 @@ class CollabDataModule(pl.LightningDataModule):
         )
 
     def val_dataloader(self) -> EVAL_DATALOADERS:
-        assert self.valid_dataset is not None
+        assert self.dataset["valid"] is not None
         return DataLoader(
-            dataset=self.valid_dataset,
+            dataset=self.dataset["valid"],
             batch_size=self.config["data"]["batch_size"],
             shuffle=False,
             num_workers=self.config["data"]["num_workers"],
@@ -426,9 +473,21 @@ class CollabDataModule(pl.LightningDataModule):
         )
 
     def test_dataloader(self) -> EVAL_DATALOADERS:
-        assert self.test_dataset is not None
+        assert self.dataset["test"] is not None
         return DataLoader(
-            dataset=self.test_dataset,
+            dataset=self.dataset["test"],
+            batch_size=self.config["data"]["batch_size"],
+            shuffle=False,
+            num_workers=self.config["data"]["num_workers"],
+            collate_fn=dgl.dataloading.GraphCollator().collate,
+            pin_memory=self.config["data"]["pin_memory"],
+            drop_last=False,
+        )
+
+    def predict_dataloader(self) -> EVAL_DATALOADERS:
+        assert self.dataset["predict"] is not None
+        return DataLoader(
+            dataset=self.dataset["predict"],
             batch_size=self.config["data"]["batch_size"],
             shuffle=False,
             num_workers=self.config["data"]["num_workers"],

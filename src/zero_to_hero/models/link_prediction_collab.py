@@ -252,3 +252,10 @@ class LinkPredictorCollab(pl.LightningModule):  # pylint: disable=too-many-ances
         self.log("test_accuracy", metrics["total_acc"], on_epoch=True)
 
         self.log("test_hits50", metrics["hits@50"], on_epoch=True)
+
+    def predict_step(
+        self, batch: Tuple[dgl.DGLHeteroGraph, torch.Tensor], _: int, __: Optional[int] = None
+    ) -> torch.Tensor:
+        graph, ___ = batch
+        predicted_links = self(graph)
+        return self.sigmoid(predicted_links.detach().cpu()) >= 0.5
