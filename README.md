@@ -169,39 +169,18 @@ GitHub:
 This project has been set up using [PyScaffold] 4.0.2 and the [dsproject extension] 0.6.1.
 
 [pre-commit]: https://pre-commit.com/
-
-[Jupyter]: https://jupyter.org/
-
-[nbstripout]: https://github.com/kynan/nbstripout
-
-[Google style]: http://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings
-
 [PyScaffold]: https://pyscaffold.org/
-
 [dsproject extension]: https://github.com/pyscaffold/pyscaffoldext-dsproject
-
 [fashionMNIST]: https://github.com/zalandoresearch/fashion-mnist
-
 [ogb-collab]: https://ogb.stanford.edu/docs/linkprop/#ogbl-collab
-
 [Gaussian-blobs]: https://scikit-learn.org/stable/modules/generated/sklearn.datasets.make_blobs.html
-
 [PyTorch]: https://pytorch.org/
-
 [OGB]: https://ogb.stanford.edu/
-
 [DGL]: https://www.dgl.ai/
-
 [DGL-installation]: https://www.dgl.ai/pages/start.html
-
 [PyTorch-installation]: https://pytorch.org/
-
 [PyTorch-Lightning]: https://www.pytorchlightning.ai/
-
 [Lightning-Bolts]: https://lightning-bolts.readthedocs.io/en/latest/
-
 [Link Prediction Based on Graph Neural Networks]: https://arxiv.org/abs/1802.09691
-
 [Revisiting Graph Neural Networks for Link Prediction]: https://arxiv.org/abs/2010.16103
-
 [An End-to-End Deep Learning Architecture for Graph Classification]: https://www.aaai.org/ocs/index.php/AAAI/AAAI18/paper/viewPaper/17146
