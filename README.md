@@ -1,7 +1,9 @@
 # Zero To Hero Tutorial on a Deep Learning Classification Task
 
 This repository tries to introduce the different stages that someone needs to follow for classifying data based on their
-complexity.
+complexity. 
+More information can be found in the interactive 
+[Google Colab Notebooks](https://colab.research.google.com/drive/1P6OHYSrYYqQ7qgBVtTphOvkQztYClv13?usp=sharing).
 
 ## Description
 
